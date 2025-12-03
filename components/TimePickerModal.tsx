@@ -2,13 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useSettings } from '@/contexts/SettingsContext';
 
 interface Props {
   visible: boolean;
-  initialDate: Date;
+  initialTime: string; // HH:mm
   onClose: () => void;
-  onSelect: (date: Date) => void;
+  onSelect: (time: string) => void;
 }
 
 const screenHeight = Dimensions.get('window').height;
@@ -16,54 +15,16 @@ const ITEM_HEIGHT = 44;
 const VISIBLE_ITEMS = 5;
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 
-function getMonths(language: 'en' | 'cs'): string[] {
-  if (language === 'cs') {
-    return [
-      'Leden',
-      'Únor',
-      'Březen',
-      'Duben',
-      'Květen',
-      'Červen',
-      'Červenec',
-      'Srpen',
-      'Září',
-      'Říjen',
-      'Listopad',
-      'Prosinec',
-    ];
-  }
-  return [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
+function getHours(): string[] {
+  return Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
 }
 
-function getDaysInMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function generateYears(): number[] {
-  const currentYear = new Date().getFullYear();
-  const years: number[] = [];
-  for (let i = currentYear - 100; i <= currentYear + 100; i++) {
-    years.push(i);
-  }
-  return years;
+function getMinutes(): string[] {
+  return Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
 }
 
 interface WheelPickerProps {
-  items: (string | number)[];
+  items: string[];
   selectedIndex: number;
   onSelect: (index: number) => void;
   width: number;
@@ -82,7 +43,6 @@ function WheelPicker({ items, selectedIndex, onSelect, width, initialScroll }: W
   useEffect(() => {
     if (initialScroll && scrollViewRef.current && !hasInitializedRef.current) {
       // Scroll to center the selected item
-      // The content has paddingTop, and we have padding items, so we just scroll to the item's position
       const offsetY = selectedIndex * ITEM_HEIGHT;
       setTimeout(() => {
         scrollViewRef.current?.scrollTo({ y: offsetY, animated: false });
@@ -98,12 +58,9 @@ function WheelPicker({ items, selectedIndex, onSelect, width, initialScroll }: W
   useEffect(() => {
     if (!isScrolling && scrollViewRef.current && hasInitializedRef.current) {
       const validIndex = Math.max(0, Math.min(selectedIndex, items.length - 1));
-      // Only update if index changed or if current index is out of bounds
-      if (lastSelectedIndexRef.current !== validIndex || lastSelectedIndexRef.current >= items.length) {
+      if (lastSelectedIndexRef.current !== validIndex) {
         const offsetY = validIndex * ITEM_HEIGHT;
-        // Use smooth animation unless we're adjusting for array size change
-        const shouldAnimate = lastSelectedIndexRef.current < items.length;
-        scrollViewRef.current.scrollTo({ y: offsetY, animated: shouldAnimate });
+        scrollViewRef.current.scrollTo({ y: offsetY, animated: true });
         lastSelectedIndexRef.current = validIndex;
       }
     }
@@ -194,67 +151,35 @@ function WheelPicker({ items, selectedIndex, onSelect, width, initialScroll }: W
   );
 }
 
-export function DatePickerModal({ visible, initialDate, onClose, onSelect }: Props) {
+export function TimePickerModal({ visible, initialTime, onClose, onSelect }: Props) {
   const colors = useThemeColors();
   const t = useTranslation();
-  const { settings } = useSettings();
   
-  // Initialize with today's date
-  const today = new Date();
-  const [selectedDay, setSelectedDay] = useState(today.getDate());
-  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
-  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+  const [initialHour, initialMinute] = initialTime.split(':').map(Number);
+  const [selectedHour, setSelectedHour] = useState(initialHour || 9);
+  const [selectedMinute, setSelectedMinute] = useState(initialMinute || 0);
   
   const wasVisibleRef = useRef(false);
-  const months = getMonths(settings.language);
+  const hours = getHours();
+  const minutes = getMinutes();
 
-  // Reset to today's date when modal opens
   useEffect(() => {
     if (visible && !wasVisibleRef.current) {
-      // Modal just opened - always start with today's date
-      const now = new Date();
-      setSelectedDay(now.getDate());
-      setSelectedMonth(now.getMonth());
-      setSelectedYear(now.getFullYear());
+      const [h, m] = initialTime.split(':').map(Number);
+      setSelectedHour(h || 9);
+      setSelectedMinute(m || 0);
       wasVisibleRef.current = true;
     } else if (!visible) {
-      // Modal closed - reset flag
       wasVisibleRef.current = false;
     }
-  }, [visible]);
-
-  // Adjust day safely when month/year changes
-  const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
-  const prevMonthRef = useRef(selectedMonth);
-  const prevYearRef = useRef(selectedYear);
-  
-  useEffect(() => {
-    // Only adjust day if month or year actually changed and day is invalid
-    const monthChanged = prevMonthRef.current !== selectedMonth;
-    const yearChanged = prevYearRef.current !== selectedYear;
-    
-    if ((monthChanged || yearChanged) && selectedDay > daysInMonth) {
-      // Use requestAnimationFrame to adjust after render to avoid flicker
-      requestAnimationFrame(() => {
-        setSelectedDay(daysInMonth);
-      });
-    }
-    
-    prevMonthRef.current = selectedMonth;
-    prevYearRef.current = selectedYear;
-  }, [selectedMonth, selectedYear, daysInMonth, selectedDay]);
-
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const years = generateYears();
-  const yearIndex = years.indexOf(selectedYear);
+  }, [visible, initialTime]);
 
   const handleConfirm = () => {
-    const date = new Date(selectedYear, selectedMonth, selectedDay);
-    onSelect(date);
+    const h = selectedHour.toString().padStart(2, '0');
+    const m = selectedMinute.toString().padStart(2, '0');
+    onSelect(`${h}:${m}`);
     onClose();
   };
-
-  const currentDate = new Date(selectedYear, selectedMonth, selectedDay);
 
   if (!visible) {
     return null;
@@ -268,7 +193,7 @@ export function DatePickerModal({ visible, initialDate, onClose, onSelect }: Pro
           <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
             <Text style={[styles.cancelText, { color: colors.textSecondary }]}>{t('cancel')}</Text>
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>{t('selectDate')}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{t('time') || 'Time'}</Text>
           <TouchableOpacity onPress={handleConfirm} style={styles.doneButton}>
             <Text style={[styles.doneText, { color: colors.primaryAccent }]}>{t('done')}</Text>
           </TouchableOpacity>
@@ -276,37 +201,20 @@ export function DatePickerModal({ visible, initialDate, onClose, onSelect }: Pro
 
         <View style={styles.pickerContainer}>
           <WheelPicker
-            items={days}
-            selectedIndex={Math.min(selectedDay - 1, days.length - 1)}
-            onSelect={(index) => setSelectedDay(index + 1)}
+            items={hours}
+            selectedIndex={selectedHour}
+            onSelect={setSelectedHour}
             width={80}
-            initialScroll={visible && !wasVisibleRef.current}
-          />
-          <WheelPicker
-            items={months}
-            selectedIndex={selectedMonth}
-            onSelect={setSelectedMonth}
-            width={140}
             initialScroll={visible}
           />
+          <Text style={[styles.separator, { color: colors.textPrimary }]}>:</Text>
           <WheelPicker
-            items={years}
-            selectedIndex={yearIndex >= 0 ? yearIndex : Math.floor(years.length / 2)}
-            onSelect={(index) => setSelectedYear(years[index])}
-            width={100}
+            items={minutes}
+            selectedIndex={selectedMinute}
+            onSelect={setSelectedMinute}
+            width={80}
             initialScroll={visible}
           />
-        </View>
-
-        <View style={styles.previewContainer}>
-          <Text style={[styles.previewText, { color: colors.textSecondary }]}>
-            {currentDate.toLocaleDateString(settings.language === 'cs' ? 'cs-CZ' : 'en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </Text>
         </View>
       </View>
     </Modal>
@@ -326,7 +234,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: 40,
-    maxHeight: screenHeight * 0.7,
+    maxHeight: screenHeight * 0.5,
   },
   header: {
     flexDirection: 'row',
@@ -366,6 +274,11 @@ const styles = StyleSheet.create({
     marginVertical: 20,
     paddingHorizontal: 20,
   },
+  separator: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginHorizontal: 10,
+  },
   wheelContainer: {
     height: WHEEL_HEIGHT,
     position: 'relative',
@@ -394,14 +307,5 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderBottomWidth: 1,
     backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  previewContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    alignItems: 'center',
-  },
-  previewText: {
-    fontSize: 15,
-    textAlign: 'center',
   },
 });

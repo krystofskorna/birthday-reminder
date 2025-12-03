@@ -110,9 +110,12 @@ export default function PersonDetailScreen() {
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t('reminder')}</Text>
             <Switch value={person.reminderEnabled} onValueChange={handleReminderToggle} trackColor={{ true: colors.primaryAccent }} />
           </View>
+          {person.reminderEnabled && (
           <Text style={[styles.cardDescription, { color: colors.textSecondary }]}>
             {t('weWillRemindYou', leadTimeLabel(person.reminderLeadTime, t))}
+              {person.reminderTime && ` at ${person.reminderTime}`}
           </Text>
+          )}
         </View>
 
         {person.note ? (
@@ -170,6 +173,8 @@ function accentFor(type: string, colors: ReturnType<typeof useThemeColors>, getC
 
 function leadTimeLabel(value: number, t: (key: string) => string) {
   switch (value) {
+    case 0:
+      return t('onTheMorning');
     case 1:
       return t('oneDayBefore');
     case 7:
@@ -177,7 +182,7 @@ function leadTimeLabel(value: number, t: (key: string) => string) {
     case 30:
       return t('oneMonthInAdvance');
     default:
-      return t('aheadOfTime');
+      return `${value} days before`; // Simplified fallback
   }
 }
 

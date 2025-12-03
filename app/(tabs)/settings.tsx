@@ -7,7 +7,6 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useSettings } from '@/contexts/SettingsContext';
 import { usePeople } from '@/contexts/PeopleContext';
 import { useCustomTypes } from '@/contexts/CustomTypesContext';
-import { getReminderOptions } from '@/constants/reminders';
 import { themes, themeNames, ThemeName } from '@/lib/themes';
 
 export default function SettingsScreen() {
@@ -17,9 +16,9 @@ export default function SettingsScreen() {
     settings,
     setBirthdayRemindersEnabled,
     setNameDayRemindersEnabled,
-    setPreferredLeadTime,
     setLanguage,
     setTheme,
+    setIcloudSyncEnabled,
   } = useSettings();
   const { people, removePerson } = usePeople();
   const { customTypes } = useCustomTypes();
@@ -30,7 +29,6 @@ export default function SettingsScreen() {
   ];
 
   const selectedLanguage = languages.find((lang) => lang.code === settings.language) || languages[0];
-  const reminderOptions = useMemo(() => getReminderOptions(settings.language), [settings.language]);
 
   const handleExportData = async () => {
     try {
@@ -117,44 +115,6 @@ export default function SettingsScreen() {
             icon="calendar"
             colors={colors}
           />
-          <View style={[styles.timingCard, { backgroundColor: colors.surface, shadowColor: colors.cardShadow }]}>
-            <View style={styles.timingHeader}>
-              <Feather name="clock" size={18} color={colors.primaryAccent} />
-              <Text style={[styles.cardTitle, { color: colors.textPrimary, marginLeft: 8 }]}>{t('reminderTiming')}</Text>
-            </View>
-            <View style={styles.reminderOptions}>
-              {reminderOptions.map((option) => {
-                const active = settings.preferredLeadTime === option.value;
-                return (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={[
-                      styles.reminderOption,
-                      {
-                        borderColor: active ? colors.primaryAccent : `${colors.textSecondary}25`,
-                        backgroundColor: active ? `${colors.primaryAccent}20` : 'transparent',
-                      },
-                    ]}
-                    onPress={() => setPreferredLeadTime(option.value)}
-                    activeOpacity={0.7}
-                  >
-                    {active && (
-                      <View style={[styles.activeIndicator, { backgroundColor: colors.primaryAccent }]} />
-                    )}
-                    <View style={styles.reminderContent}>
-                      <Text style={[styles.reminderLabel, { color: active ? colors.primaryAccent : colors.textPrimary }]}>
-                        {option.label}
-                      </Text>
-                      <Text style={[styles.reminderDescription, { color: colors.textSecondary }]}>
-                        {option.description}
-                      </Text>
-                    </View>
-                    {active && <Feather name="check-circle" size={20} color={colors.primaryAccent} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
         </View>
 
         <View style={styles.section}>
@@ -229,6 +189,14 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <SectionHeader title={t('dataManagement')} icon="database" colors={colors} />
+          <SettingRow
+            label="iCloud Sync"
+            description="Sync your data across all your devices using iCloud"
+            value={settings.icloudSyncEnabled}
+            onValueChange={setIcloudSyncEnabled}
+            icon="cloud"
+            colors={colors}
+          />
           <View style={styles.rowButtons}>
             <ActionButton
               label={t('exportData')}

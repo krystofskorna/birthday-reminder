@@ -1,7 +1,11 @@
 import React, { PropsWithChildren, useCallback, useContext, useEffect, useMemo, useReducer } from 'react';
 import { Person, ReminderLeadTime } from '@/types/events';
-import { samplePeople } from '@/data/samplePeople';
 import { toISODate } from '@/lib/date';
+import { scheduleEventNotification, cancelEventNotification } from '@/services/notifications';
+import { useSettings } from '@/contexts/SettingsContext';
+import { loadPeople, savePeople } from '@/services/storage';
+import { showInterstitialAfterAction } from '@/services/ads';
+import { updateWidgetData } from '@/services/widgetData';
 
 type PeopleAction =
   | { type: 'load'; payload: Person[] }
@@ -56,17 +60,29 @@ export interface PersonInput {
   profileImageUri?: string;
   reminderEnabled?: boolean;
   reminderLeadTime?: ReminderLeadTime;
+  reminderTime?: string;
 }
 
 const PeopleContext = React.createContext<PeopleContextValue | undefined>(undefined);
 
 export function PeopleProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const { settings } = useSettings();
 
   useEffect(() => {
-    // Initial load can be replaced with persistent storage later
-    dispatch({ type: 'load', payload: samplePeople });
+    // Load people from persistent storage
+    loadPeople().then((people) => {
+      dispatch({ type: 'load', payload: people });
+    });
   }, []);
+
+  // Save to storage and update widget whenever people change (after initial load)
+  useEffect(() => {
+    if (state.hasLoaded && state.people.length >= 0) {
+      savePeople(state.people).catch(console.error);
+      updateWidgetData().catch(console.error);
+    }
+  }, [state.people, state.hasLoaded]);
 
   const addPerson = useCallback((input: PersonInput): Person => {
     const now = new Date();
@@ -79,18 +95,23 @@ export function PeopleProvider({ children }: PropsWithChildren) {
       profileImageUri: input.profileImageUri,
       reminderEnabled: input.reminderEnabled ?? true,
       reminderLeadTime: input.reminderLeadTime ?? 1,
+      reminderTime: input.reminderTime ?? '09:00',
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
     };
     dispatch({ type: 'add', payload: person });
+    scheduleEventNotification(person, settings.language).catch(console.error);
+    // Show interstitial ad occasionally after adding a person
+    showInterstitialAfterAction().catch(console.error);
     return person;
-  }, []);
+  }, [settings.language]);
 
   const updatePerson = useCallback((id: string, updates: PersonInput) => {
-    dispatch({
-      type: 'update',
-      payload: {
-        id,
+    const existing = state.people.find(p => p.id === id);
+    if (!existing) return;
+
+    const updatedPerson: Person = {
+      ...existing,
         name: updates.name.trim(),
         date: updates.date,
         type: updates.type,
@@ -98,13 +119,21 @@ export function PeopleProvider({ children }: PropsWithChildren) {
         profileImageUri: updates.profileImageUri,
         reminderEnabled: updates.reminderEnabled ?? true,
         reminderLeadTime: updates.reminderLeadTime ?? 1,
+      reminderTime: updates.reminderTime ?? existing.reminderTime ?? '09:00',
         updatedAt: new Date().toISOString(),
-      } as Person,
+    };
+
+    dispatch({
+      type: 'update',
+      payload: updatedPerson,
     });
-  }, []);
+    
+    scheduleEventNotification(updatedPerson, settings.language).catch(console.error);
+  }, [state.people, settings.language]);
 
   const removePerson = useCallback((id: string) => {
     dispatch({ type: 'remove', payload: id });
+    cancelEventNotification(id).catch(console.error);
   }, []);
 
   const getPerson = useCallback(
@@ -150,6 +179,7 @@ function createFallbackPerson(): Person {
     type: 'birthday',
     reminderEnabled: true,
     reminderLeadTime: 1,
+    reminderTime: '09:00',
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
   };

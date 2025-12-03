@@ -1,10 +1,11 @@
-import React, { PropsWithChildren, useCallback, useContext, useMemo, useState } from 'react';
+import React, { PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ReminderLeadTime, Settings, Language, ThemeName } from '@/types/events';
+import { loadSettings, saveSettings } from '@/services/storage';
+import { setCloudKitEnabled, performFullSync } from '@/services/cloudkit';
 
 const defaultSettings: Settings = {
   birthdayRemindersEnabled: true,
   nameDayRemindersEnabled: true,
-  preferredLeadTime: 1,
   preferredCountryCode: 'cs_CZ',
   icloudSyncEnabled: false,
   lastBackupDate: null,
@@ -16,7 +17,6 @@ interface SettingsContextValue {
   settings: Settings;
   setBirthdayRemindersEnabled: (value: boolean) => void;
   setNameDayRemindersEnabled: (value: boolean) => void;
-  setPreferredLeadTime: (value: ReminderLeadTime) => void;
   setPreferredCountryCode: (code: string | null) => void;
   setIcloudSyncEnabled: (value: boolean) => void;
   markBackupComplete: (date: Date) => void;
@@ -28,45 +28,87 @@ const SettingsContext = React.createContext<SettingsContextValue | undefined>(un
 
 export function SettingsProvider({ children }: PropsWithChildren) {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  useEffect(() => {
+    // Load settings from persistent storage
+    loadSettings().then((loadedSettings) => {
+      if (loadedSettings) {
+        setSettings(loadedSettings);
+      }
+      setHasLoaded(true);
+    });
+  }, []);
 
   const setBirthdayRemindersEnabled = useCallback((value: boolean) => {
-    setSettings((prev) => ({ ...prev, birthdayRemindersEnabled: value }));
-  }, []);
+    setSettings((prev) => {
+      const updated = { ...prev, birthdayRemindersEnabled: value };
+      if (hasLoaded) saveSettings(updated).catch(console.error);
+      return updated;
+    });
+  }, [hasLoaded]);
 
   const setNameDayRemindersEnabled = useCallback((value: boolean) => {
-    setSettings((prev) => ({ ...prev, nameDayRemindersEnabled: value }));
-  }, []);
-
-  const setPreferredLeadTime = useCallback((value: ReminderLeadTime) => {
-    setSettings((prev) => ({ ...prev, preferredLeadTime: value }));
-  }, []);
+    setSettings((prev) => {
+      const updated = { ...prev, nameDayRemindersEnabled: value };
+      if (hasLoaded) saveSettings(updated).catch(console.error);
+      return updated;
+    });
+  }, [hasLoaded]);
 
   const setPreferredCountryCode = useCallback((code: string | null) => {
-    setSettings((prev) => ({ ...prev, preferredCountryCode: code ?? undefined }));
-  }, []);
+    setSettings((prev) => {
+      const updated = { ...prev, preferredCountryCode: code ?? undefined };
+      if (hasLoaded) saveSettings(updated).catch(console.error);
+      return updated;
+    });
+  }, [hasLoaded]);
 
   const setIcloudSyncEnabled = useCallback((value: boolean) => {
-    setSettings((prev) => ({ ...prev, icloudSyncEnabled: value }));
-  }, []);
+    setSettings((prev) => {
+      const updated = { ...prev, icloudSyncEnabled: value };
+      if (hasLoaded) {
+        saveSettings(updated).catch(console.error);
+        // Enable/disable CloudKit sync
+        setCloudKitEnabled(value);
+        // Perform initial sync if enabling
+        if (value) {
+          performFullSync().catch(console.error);
+        }
+      }
+      return updated;
+    });
+  }, [hasLoaded]);
 
   const markBackupComplete = useCallback((date: Date) => {
-    setSettings((prev) => ({ ...prev, lastBackupDate: date.toISOString() }));
-  }, []);
+    setSettings((prev) => {
+      const updated = { ...prev, lastBackupDate: date.toISOString() };
+      if (hasLoaded) saveSettings(updated).catch(console.error);
+      return updated;
+    });
+  }, [hasLoaded]);
 
   const setLanguage = useCallback((language: Language) => {
-    setSettings((prev) => ({ ...prev, language }));
-  }, []);
+    setSettings((prev) => {
+      const updated = { ...prev, language };
+      if (hasLoaded) saveSettings(updated).catch(console.error);
+      return updated;
+    });
+  }, [hasLoaded]);
 
   const setTheme = useCallback((theme: ThemeName) => {
-    setSettings((prev) => ({ ...prev, theme }));
-  }, []);
+    setSettings((prev) => {
+      const updated = { ...prev, theme };
+      if (hasLoaded) saveSettings(updated).catch(console.error);
+      return updated;
+    });
+  }, [hasLoaded]);
 
   const value = useMemo<SettingsContextValue>(
     () => ({
       settings,
       setBirthdayRemindersEnabled,
       setNameDayRemindersEnabled,
-      setPreferredLeadTime,
       setPreferredCountryCode,
       setIcloudSyncEnabled,
       markBackupComplete,
@@ -77,7 +119,6 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       settings,
       setBirthdayRemindersEnabled,
       setNameDayRemindersEnabled,
-      setPreferredLeadTime,
       setPreferredCountryCode,
       setIcloudSyncEnabled,
       markBackupComplete,

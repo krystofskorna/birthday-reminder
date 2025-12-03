@@ -10,6 +10,7 @@ import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import { SectionGroup, SectionHeader } from '@/components/SectionHeader';
 import { TodayCelebrations } from '@/components/TodayCelebrations';
+import { AdBanner } from '@/components/AdBanner';
 import { Person } from '@/types/events';
 import { daysUntil, nextOccurrence, parseISODate } from '@/lib/date';
 
@@ -87,6 +88,11 @@ export default function UpcomingScreen() {
               message={t('noCelebrationsToDisplay')}
             />
           )}
+          
+          {/* Ad Banner */}
+          <View style={styles.adContainer}>
+            <AdBanner />
+          </View>
         </ScrollView>
         <TouchableOpacity 
           style={[styles.addButton, { backgroundColor: colors.primaryAccent, shadowColor: colors.cardShadow }]}
@@ -288,6 +294,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.3,
+  },
+  adContainer: {
+    marginTop: 24,
+    marginBottom: 8,
+    alignItems: 'center',
   },
 });
 

@@ -19,6 +19,7 @@ import { useCustomTypes } from '@/contexts/CustomTypesContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { DateField } from '@/components/DateField';
 import { AddCustomTypeModal } from '@/components/AddCustomTypeModal';
+import { TimePickerModal } from '@/components/TimePickerModal';
 import { EventType, ReminderLeadTime } from '@/types/events';
 import { getReminderOptions } from '@/constants/reminders';
 import { toISODate } from '@/lib/date';
@@ -37,7 +38,10 @@ export default function AddScreen() {
   const [note, setNote] = useState('');
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderLeadTime, setReminderLeadTime] = useState<ReminderLeadTime>(1);
+  const [reminderTime, setReminderTime] = useState('09:00');
   const [showCustomTypeModal, setShowCustomTypeModal] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [customLeadTime, setCustomLeadTime] = useState('');
 
   const reminderOptions = useMemo(() => getReminderOptions(settings.language), [settings.language]);
 
@@ -53,7 +57,8 @@ export default function AddScreen() {
       type,
       note: note.trim() || undefined,
       reminderEnabled,
-      reminderLeadTime,
+      reminderLeadTime: customLeadTime ? (parseInt(customLeadTime, 10) as ReminderLeadTime) : reminderLeadTime,
+      reminderTime,
     });
 
     router.back();
@@ -217,6 +222,24 @@ export default function AddScreen() {
             </View>
             {reminderEnabled && (
               <View style={styles.reminderOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.reminderOption,
+                    { borderColor: `${colors.primaryAccent}33` }
+                  ]}
+                  onPress={() => setShowTimePicker(true)}
+                >
+                  <View style={styles.reminderOptionContent}>
+                    <Text style={[styles.reminderOptionLabel, { color: colors.textPrimary }]}>
+                      {t('reminderTime')}
+                    </Text>
+                    <Text style={[styles.reminderOptionDescription, { color: colors.textSecondary }]}>
+                      {reminderTime}
+                    </Text>
+                  </View>
+                  <Feather name="clock" size={20} color={colors.primaryAccent} />
+                </TouchableOpacity>
+
                 {reminderOptions.map((option) => (
                   <TouchableOpacity
                     key={option.value}
@@ -224,16 +247,19 @@ export default function AddScreen() {
                       styles.reminderOption,
                       {
                         backgroundColor:
-                          reminderLeadTime === option.value
+                          reminderLeadTime === option.value && !customLeadTime
                             ? `${colors.primaryAccent}26`
                             : 'transparent',
                         borderColor:
-                          reminderLeadTime === option.value
+                          reminderLeadTime === option.value && !customLeadTime
                             ? colors.primaryAccent
                             : `${colors.primaryAccent}33`,
                       },
                     ]}
-                    onPress={() => setReminderLeadTime(option.value)}
+                    onPress={() => {
+                      setReminderLeadTime(option.value);
+                      setCustomLeadTime('');
+                    }}
                   >
                     <View style={styles.reminderOptionContent}>
                       <Text style={[styles.reminderOptionLabel, { color: colors.textPrimary }]}>
@@ -243,11 +269,40 @@ export default function AddScreen() {
                         {option.description}
                       </Text>
                     </View>
-                    {reminderLeadTime === option.value && (
+                    {reminderLeadTime === option.value && !customLeadTime && (
                       <Feather name="check" size={20} color={colors.primaryAccent} />
                     )}
                   </TouchableOpacity>
                 ))}
+
+                <View style={styles.customLeadTimeContainer}>
+                  <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginBottom: 8 }]}>
+                    {t('customLeadTime')}
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input, 
+                      { 
+                        backgroundColor: customLeadTime ? `${colors.primaryAccent}15` : colors.background,
+                        borderColor: customLeadTime ? colors.primaryAccent : `${colors.primaryAccent}33`,
+                        color: colors.textPrimary 
+                      }
+                    ]}
+                    value={customLeadTime}
+                    onChangeText={(text) => {
+                      // Only allow numbers
+                      if (/^\d*$/.test(text)) {
+                        setCustomLeadTime(text);
+                        if (text) {
+                          // We don't strictly need to update reminderLeadTime state visually if we prioritize customLeadTime
+                        }
+                      }
+                    }}
+                    placeholder="0"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="number-pad"
+                  />
+                </View>
               </View>
             )}
           </View>
@@ -269,6 +324,12 @@ export default function AddScreen() {
         visible={showCustomTypeModal}
         onClose={() => setShowCustomTypeModal(false)}
         onSelect={(typeId) => setType(typeId)}
+      />
+      <TimePickerModal
+        visible={showTimePicker}
+        initialTime={reminderTime}
+        onClose={() => setShowTimePicker(false)}
+        onSelect={setReminderTime}
       />
     </SafeAreaView>
   );
@@ -406,6 +467,9 @@ const styles = StyleSheet.create({
   },
   reminderOptionDescription: {
     fontSize: 13,
+  },
+  customLeadTimeContainer: {
+    marginTop: 12,
   },
   footer: {
     position: 'absolute',

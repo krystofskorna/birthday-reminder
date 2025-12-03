@@ -72,12 +72,20 @@ export const translations = {
     aheadOfTime: 'ahead of time',
     
     // Reminder options
+    onDayLabel: 'Day of event',
+    onDayDesc: 'Get reminded on the day of the celebration.',
     oneDayBeforeLabel: '1 day before',
     oneDayBeforeDesc: 'Perfect for last-minute prep.',
+    threeDaysBeforeLabel: '3 days before',
+    threeDaysBeforeDesc: 'Good balance for planning ahead.',
     oneWeekBeforeLabel: '1 week before',
     oneWeekBeforeDesc: 'Great for coordinating with friends.',
-    oneMonthBeforeLabel: '1 month before',
-    oneMonthBeforeDesc: 'Plenty of time for planning and gifts.',
+    customLeadTime: 'Custom days before',
+    reminderTime: 'Notification Time',
+    time: 'Time',
+    customLeadTime: 'Custom days before',
+    reminderTime: 'Notification Time',
+    time: 'Time',
     
     // Settings
     settings: 'Settings',
@@ -131,9 +139,9 @@ export const translations = {
   cs: {
     // Home screen
     upcomingCelebrations: 'Nadcházející oslavy',
-    startAddingCelebrations: 'Začněte přidávat oslavy, abyste nezmeškali žádný významný den',
+    startAddingCelebrations: 'Začněte přidávat oslavy, abyste nezmeškali žádný důležitý den',
     youHaveOneCelebration: 'Máte 1 nadcházející oslavu',
-    youHaveCelebrations: (count: number) => `Máte ${count} oslav, na které se můžete těšit`,
+    youHaveCelebrations: (count: number) => `Máte ${count} ${count === 1 ? 'oslava' : count < 5 ? 'oslavy' : 'oslav'}, na které se můžete těšit`,
     thisWeek: 'Tento týden',
     thisMonth: 'Tento měsíc',
     noBirthdaysYet: 'Zatím žádné narozeniny 🎈',
@@ -147,8 +155,8 @@ export const translations = {
     celebration: 'Oslava',
     
     // Event card
-    turns: (age: number) => `Dozví se ${age} let`,
-    turnsLabel: 'Dozví se',
+    turns: (age: number) => `Dosáhne ${age} let`,
+    turnsLabel: 'Dosáhne',
     today: 'Dnes',
     tomorrow: 'Zítra',
     inDays: (days: number) => `Za ${days} ${days === 1 ? 'den' : days < 5 ? 'dny' : 'dní'}`,
@@ -177,7 +185,7 @@ export const translations = {
     save: 'Uložit',
     enterName: 'Zadejte jméno',
     celebrationDate: 'Datum oslavy',
-    validationError: 'Chyba ověření',
+    validationError: 'Chyba validace',
     pleaseEnterName: 'Prosím zadejte jméno.',
     
     // Person detail
@@ -188,7 +196,7 @@ export const translations = {
     countdown: 'Odpočítávání',
     celebration: 'Oslava',
     notes: 'Poznámky',
-    weWillRemindYou: (time: string) => `Připomeneme vám ${time}.`,
+    weWillRemindYou: (time: string) => `Připomeneme vám ${time}`,
     
     // Reminder labels
     onTheMorning: 'ráno v den oslavy',
@@ -199,12 +207,17 @@ export const translations = {
     aheadOfTime: 'předem',
     
     // Reminder options
+    onDayLabel: 'V den oslavy',
+    onDayDesc: 'Dostanete upozornění v den oslavy.',
     oneDayBeforeLabel: '1 den předem',
     oneDayBeforeDesc: 'Ideální pro poslední přípravu.',
+    threeDaysBeforeLabel: '3 dny předem',
+    threeDaysBeforeDesc: 'Dobrá rovnováha pro plánování dopředu.',
     oneWeekBeforeLabel: '1 týden předem',
     oneWeekBeforeDesc: 'Skvělé pro koordinaci s přáteli.',
-    oneMonthBeforeLabel: '1 měsíc předem',
-    oneMonthBeforeDesc: 'Dostatek času na plánování a dárky.',
+    customLeadTime: 'Vlastní počet dní předem',
+    reminderTime: 'Čas upozornění',
+    time: 'Čas',
     
     // Settings
     settings: 'Nastavení',
@@ -212,12 +225,12 @@ export const translations = {
     birthdayReminders: 'Připomínky narozenin',
     birthdayRemindersDesc: 'Dostávejte upozornění na každé narozeniny, které sledujete.',
     nameDayReminders: 'Připomínky svátků',
-    nameDayRemindersDesc: 'Oslavte svátky s přátelským upozorněním.',
+    nameDayRemindersDesc: 'Dostávejte upozornění na svátky, které sledujete.',
     reminderTiming: 'Načasování připomínky',
     nameDaySettings: 'Nastavení svátků',
     country: 'Země',
     selectCountryForNameDay: 'Vyberte zemi pro vyhledávání svátků',
-    tapToCycleCountries: 'Klepněte pro procházení podporovaných zemí. Další regiony brzy.',
+    tapToCycleCountries: 'Klepněte pro procházení podporovaných zemí. Více regionů přibude brzy.',
     language: 'Jazyk',
     theme: 'Téma',
     about: 'O aplikaci',
