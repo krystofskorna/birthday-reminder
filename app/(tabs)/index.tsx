@@ -89,10 +89,10 @@ export default function UpcomingScreen() {
             />
           )}
           
-          {/* Ad Banner */}
-          <View style={styles.adContainer}>
+          {/* Ad Banner - Hidden until AdMob is configured */}
+          {/* <View style={styles.adContainer}>
             <AdBanner />
-          </View>
+          </View> */}
         </ScrollView>
         <TouchableOpacity 
           style={[styles.addButton, { backgroundColor: colors.primaryAccent, shadowColor: colors.cardShadow }]}
