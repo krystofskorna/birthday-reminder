@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Birthday Reminder",
-    "slug": "birthday-reminder",
+      "slug": "birthday-reminder",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.birthdayreminder"
+      "bundleIdentifier": "com.skornakrystof.birthdayreminder"
     },
     "web": {
       "bundler": "metro",
