@@ -5,7 +5,6 @@ import { scheduleEventNotification, cancelEventNotification } from '@/services/n
 import { useSettings } from '@/contexts/SettingsContext';
 import { loadPeople, savePeople } from '@/services/storage';
 import { showInterstitialAfterAction } from '@/services/ads';
-import { updateWidgetData } from '@/services/widgetData';
 
 type PeopleAction =
   | { type: 'load'; payload: Person[] }
@@ -80,7 +79,6 @@ export function PeopleProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (state.hasLoaded && state.people.length >= 0) {
       savePeople(state.people).catch(console.error);
-      updateWidgetData().catch(console.error);
     }
   }, [state.people, state.hasLoaded]);
 
