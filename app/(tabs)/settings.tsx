@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, Share, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -7,9 +7,13 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useSettings } from '@/contexts/SettingsContext';
 import { usePeople } from '@/contexts/PeopleContext';
 import { useCustomTypes } from '@/contexts/CustomTypesContext';
+import { usePremium } from '@/contexts/PremiumContext';
 import { themes, themeNames, ThemeName } from '@/lib/themes';
+import { useRouter } from 'expo-router';
+import { LanguagePickerModal } from '@/components/LanguagePickerModal';
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const colors = useThemeColors();
   const t = useTranslation();
   const {
@@ -19,9 +23,12 @@ export default function SettingsScreen() {
     setLanguage,
     setTheme,
     setIcloudSyncEnabled,
+    setIsPremium,
   } = useSettings();
   const { people, removePerson } = usePeople();
   const { customTypes } = useCustomTypes();
+  const { canUseAllThemes, isPremium, canUseChecklists } = usePremium();
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
   const languages = [
     { code: 'en' as const, name: 'English', flag: '🇬🇧' },
@@ -119,40 +126,43 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <SectionHeader title={t('language')} icon="globe" colors={colors} />
-          <View style={styles.languageOptions}>
-            {languages.map((lang) => {
-              const isSelected = settings.language === lang.code;
-              return (
-                <TouchableOpacity
-                  key={lang.code}
-                  style={[
-                    styles.languageOption,
-                    {
-                      backgroundColor: isSelected ? `${colors.primaryAccent}17` : colors.surface,
-                      borderColor: isSelected ? colors.primaryAccent : `${colors.textSecondary}33`,
-                    },
-                  ]}
-                  onPress={() => setLanguage(lang.code)}
-                >
-                  <Text style={styles.languageFlag}>{lang.flag}</Text>
-                  <Text style={[styles.languageName, { color: isSelected ? colors.primaryAccent : colors.textPrimary }]}>
-                    {lang.name}
-                  </Text>
-                  {isSelected && <Feather name="check" size={20} color={colors.primaryAccent} />}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <TouchableOpacity
+            style={[styles.languageSelector, { backgroundColor: colors.surface, shadowColor: colors.cardShadow }]}
+            onPress={() => setShowLanguagePicker(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.languageSelectorLeft}>
+              <Text style={styles.languageFlag}>{selectedLanguage.flag}</Text>
+              <View style={styles.languageSelectorText}>
+                <Text style={[styles.languageSelectorName, { color: colors.textPrimary }]}>
+                  {selectedLanguage.name}
+                </Text>
+                <Text style={[styles.languageSelectorSubtext, { color: colors.textSecondary }]}>
+                  {settings.language === 'cs' ? t('tapToChange') : 'Tap to change language'}
+                </Text>
+              </View>
+            </View>
+            <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
           <SectionHeader title={t('theme')} icon="palette" colors={colors} />
+          {!canUseAllThemes && (
+            <View style={[styles.premiumBanner, { backgroundColor: `${colors.primaryAccent}15`, borderColor: colors.primaryAccent }]}>
+              <Feather name="lock" size={16} color={colors.primaryAccent} />
+              <Text style={[styles.premiumBannerText, { color: colors.primaryAccent }]}>
+                {t('premiumThemes')}
+              </Text>
+            </View>
+          )}
           <View style={styles.themeGrid}>
             {(Object.keys(themes) as ThemeName[]).map((themeKey) => {
               const isSelected = settings.theme === themeKey;
               const theme = themes[themeKey];
               const themeInfo = themeNames[themeKey];
               const themeLabel = settings.language === 'cs' ? themeInfo.cs : themeInfo.en;
+              const isLocked = !canUseAllThemes && themeKey !== 'blue' && themeKey !== 'purple';
               
               return (
                 <TouchableOpacity
@@ -162,10 +172,18 @@ export default function SettingsScreen() {
                     {
                       backgroundColor: isSelected ? `${colors.primaryAccent}17` : colors.surface,
                       borderColor: isSelected ? colors.primaryAccent : `${colors.textSecondary}33`,
+                      opacity: isLocked ? 0.5 : 1,
                     },
                   ]}
-                  onPress={() => setTheme(themeKey)}
+                  onPress={() => {
+                    if (isLocked) {
+                      Alert.alert(t('premiumRequired'), t('premiumThemesDesc'));
+                    } else {
+                      setTheme(themeKey);
+                    }
+                  }}
                   activeOpacity={0.7}
+                  disabled={isLocked}
                 >
                   <View style={styles.themePreview}>
                     <View style={[styles.themeColorDot, { backgroundColor: theme.primaryAccent }]} />
@@ -176,7 +194,12 @@ export default function SettingsScreen() {
                   <Text style={[styles.themeName, { color: isSelected ? colors.primaryAccent : colors.textPrimary }]}>
                     {themeLabel}
                   </Text>
-                  {isSelected && (
+                  {isLocked && (
+                    <View style={[styles.lockIcon, { backgroundColor: colors.textSecondary }]}>
+                      <Feather name="lock" size={10} color="#FFFFFF" />
+                    </View>
+                  )}
+                  {isSelected && !isLocked && (
                     <View style={[styles.themeCheck, { backgroundColor: colors.primaryAccent }]}>
                       <Feather name="check" size={14} color="#FFFFFF" />
                     </View>
@@ -187,16 +210,88 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Premium Section */}
         <View style={styles.section}>
-          <SectionHeader title={t('dataManagement')} icon="database" colors={colors} />
+          <SectionHeader title="Premium" icon="star" colors={colors} />
           <SettingRow
-            label="iCloud Sync"
-            description="Sync your data across all your devices using iCloud"
-            value={settings.icloudSyncEnabled}
-            onValueChange={setIcloudSyncEnabled}
-            icon="cloud"
+            label={isPremium ? 'Premium Active' : 'Upgrade to Premium'}
+            description={isPremium ? 'You have access to all premium features' : 'Unlock all features and remove ads'}
+            value={isPremium}
+            onValueChange={setIsPremium}
+            icon="star"
             colors={colors}
           />
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity
+              style={[styles.actionRow, { backgroundColor: colors.surface }]}
+              onPress={async () => {
+                try {
+                  const purchasesModule = await import('@/services/purchases');
+                  const { restorePurchases } = purchasesModule;
+                  const restored = await restorePurchases();
+                  if (restored) {
+                    setIsPremium(true);
+                    Alert.alert(t('success'), t('purchasesRestored'));
+                  } else {
+                    Alert.alert(t('noPurchases'), t('noPurchasesFound'));
+                  }
+                } catch (error: any) {
+                  Alert.alert(t('error'), error.message || t('restoreFailed'));
+                }
+              }}
+            >
+              <View style={styles.actionRowLeft}>
+                <Feather name="refresh-cw" size={20} color={colors.primaryAccent} />
+                <View style={styles.actionRowText}>
+                  <Text style={[styles.actionRowLabel, { color: colors.textPrimary }]}>
+                    {t('restorePurchases')}
+                  </Text>
+                  <Text style={[styles.actionRowDescription, { color: colors.textSecondary }]}>
+                    {t('restorePurchasesDesc')}
+                  </Text>
+                </View>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader title={t('dataManagement')} icon="database" colors={colors} />
+          <View style={[styles.settingCard, styles.row, { backgroundColor: colors.surface, shadowColor: colors.cardShadow, opacity: !isPremium ? 0.5 : 1 }]}>
+            <View style={styles.rowLeft}>
+              <View style={[styles.settingIconContainer, { backgroundColor: `${colors.primaryAccent}15` }]}>
+                <Feather name="cloud" size={18} color={colors.primaryAccent} />
+              </View>
+              <View style={styles.rowText}>
+                <View style={styles.rowTitleContainer}>
+                  <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>iCloud Sync</Text>
+                  {!isPremium && (
+                    <View style={[styles.premiumBadgeInline, { backgroundColor: `${colors.primaryAccent}15` }]}>
+                      <Feather name="star" size={10} color={colors.primaryAccent} />
+                      <Text style={[styles.premiumBadgeTextInline, { color: colors.primaryAccent }]}>Premium</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.cardDescription, { color: colors.textSecondary }]}>
+                  {isPremium ? "Sync your data across all your devices using iCloud" : "Premium feature - Upgrade to enable"}
+                </Text>
+              </View>
+            </View>
+            <Switch 
+              value={settings.icloudSyncEnabled} 
+              onValueChange={(value) => {
+                if (!isPremium && value) {
+                  Alert.alert(t('premiumRequired'), t('cloudSyncPremiumDesc'));
+                  return;
+                }
+                setIcloudSyncEnabled(value);
+              }} 
+              trackColor={{ true: colors.primaryAccent, false: colors.muted }}
+              thumbColor={settings.icloudSyncEnabled ? '#FFFFFF' : '#FFFFFF'}
+              disabled={!isPremium}
+            />
+          </View>
           <View style={styles.rowButtons}>
             <ActionButton
               label={t('exportData')}
@@ -241,6 +336,13 @@ export default function SettingsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <LanguagePickerModal
+        visible={showLanguagePicker}
+        onClose={() => setShowLanguagePicker(false)}
+        selectedLanguage={settings.language}
+        onSelect={setLanguage}
+      />
     </SafeAreaView>
   );
 }
@@ -273,6 +375,7 @@ function SettingRow({
   onValueChange,
   icon,
   colors,
+  disabled,
 }: {
   label: string;
   description: string;
@@ -280,9 +383,10 @@ function SettingRow({
   onValueChange: (next: boolean) => void;
   icon?: keyof typeof Feather.glyphMap;
   colors: ReturnType<typeof useThemeColors>;
+  disabled?: boolean;
 }) {
   return (
-    <View style={[styles.settingCard, styles.row, { backgroundColor: colors.surface, shadowColor: colors.cardShadow }]}>
+    <View style={[styles.settingCard, styles.row, { backgroundColor: colors.surface, shadowColor: colors.cardShadow, opacity: disabled ? 0.5 : 1 }]}>
       {icon && (
         <View style={[styles.settingIconContainer, { backgroundColor: `${colors.primaryAccent}15` }]}>
           <Feather name={icon} size={18} color={colors.primaryAccent} />
@@ -297,6 +401,7 @@ function SettingRow({
         onValueChange={onValueChange} 
         trackColor={{ true: colors.primaryAccent, false: colors.muted }}
         thumbColor={value ? '#FFFFFF' : '#FFFFFF'}
+        disabled={disabled}
       />
     </View>
   );
@@ -569,29 +674,37 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  languageOptions: {
-    gap: 12,
-  },
-  languageOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    padding: 18,
-    borderRadius: 18,
-    borderWidth: 2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  languageFlag: {
-    fontSize: 24,
-  },
-  languageName: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+          languageSelector: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 18,
+            borderRadius: 16,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 3,
+          },
+          languageSelectorLeft: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 16,
+            flex: 1,
+          },
+          languageSelectorText: {
+            flex: 1,
+          },
+          languageSelectorName: {
+            fontSize: 18,
+            fontWeight: '600',
+            marginBottom: 2,
+          },
+          languageSelectorSubtext: {
+            fontSize: 14,
+          },
+          languageFlag: {
+            fontSize: 32,
+          },
   themeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -630,6 +743,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  premiumBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  premiumBannerText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  lockIcon: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   themeCheck: {
     position: 'absolute',
     top: 8,
@@ -650,6 +787,56 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  actionRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  actionRowText: {
+    flex: 1,
+  },
+  actionRowLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  actionRowDescription: {
+    fontSize: 13,
+  },
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  rowTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  premiumBadgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  premiumBadgeTextInline: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });
 

@@ -1,7 +1,7 @@
 import React, { PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ReminderLeadTime, Settings, Language, ThemeName } from '@/types/events';
 import { loadSettings, saveSettings } from '@/services/storage';
-import { setCloudKitEnabled, performFullSync } from '@/services/cloudkit';
+import { setCloudKitEnabled, performFullSync, initializeICloud } from '@/services/icloudSync';
 
 const defaultSettings: Settings = {
   birthdayRemindersEnabled: true,
@@ -11,6 +11,7 @@ const defaultSettings: Settings = {
   lastBackupDate: null,
   language: 'en' as Language,
   theme: 'blue' as ThemeName,
+  isPremium: false, // Default to free tier
 };
 
 interface SettingsContextValue {
@@ -22,6 +23,7 @@ interface SettingsContextValue {
   markBackupComplete: (date: Date) => void;
   setLanguage: (language: Language) => void;
   setTheme: (theme: ThemeName) => void;
+  setIsPremium: (value: boolean) => void;
 }
 
 const SettingsContext = React.createContext<SettingsContextValue | undefined>(undefined);
@@ -64,16 +66,23 @@ export function SettingsProvider({ children }: PropsWithChildren) {
     });
   }, [hasLoaded]);
 
-  const setIcloudSyncEnabled = useCallback((value: boolean) => {
+  const setIcloudSyncEnabled = useCallback(async (value: boolean) => {
     setSettings((prev) => {
       const updated = { ...prev, icloudSyncEnabled: value };
       if (hasLoaded) {
         saveSettings(updated).catch(console.error);
-        // Enable/disable CloudKit sync
+        // Enable/disable iCloud sync
         setCloudKitEnabled(value);
         // Perform initial sync if enabling
         if (value) {
-          performFullSync().catch(console.error);
+          // Initialize iCloud and perform sync
+          initializeICloud().then((initialized) => {
+            if (initialized) {
+              performFullSync().catch(console.error);
+            } else {
+              console.warn('iCloud sync failed to initialize');
+            }
+          }).catch(console.error);
         }
       }
       return updated;
@@ -104,6 +113,14 @@ export function SettingsProvider({ children }: PropsWithChildren) {
     });
   }, [hasLoaded]);
 
+  const setIsPremium = useCallback((value: boolean) => {
+    setSettings((prev) => {
+      const updated = { ...prev, isPremium: value };
+      if (hasLoaded) saveSettings(updated).catch(console.error);
+      return updated;
+    });
+  }, [hasLoaded]);
+
   const value = useMemo<SettingsContextValue>(
     () => ({
       settings,
@@ -114,6 +131,7 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       markBackupComplete,
       setLanguage,
       setTheme,
+      setIsPremium,
     }),
     [
       settings,
@@ -124,6 +142,7 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       markBackupComplete,
       setLanguage,
       setTheme,
+      setIsPremium,
     ],
   );
 

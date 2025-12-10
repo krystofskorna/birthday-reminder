@@ -28,7 +28,7 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>birthday-reminder-app</string>
-          <string>com.yourcompany.birthdayreminder</string>
+          <string>com.skornakrystof.birthdayreminder</string>
         </array>
       </dict>
     </array>
@@ -48,6 +48,20 @@
       <false/>
       <key>NSAllowsLocalNetworking</key>
       <true/>
+    </dict>
+    <key>NSContactsUsageDescription</key>
+    <string>This app needs access to your contacts to import birthday information.</string>
+    <key>NSUbiquitousContainers</key>
+    <dict>
+      <key>iCloud.com.skornakrystof.birthdayreminder</key>
+      <dict>
+        <key>NSUbiquitousContainerIsDocumentScopePublic</key>
+        <true/>
+        <key>NSUbiquitousContainerSupportedFolderLevels</key>
+        <string>Any</string>
+        <key>NSUbiquitousContainerName</key>
+        <string>birthday-reminder</string>
+      </dict>
     </dict>
     <key>NSUserActivityTypes</key>
     <array>

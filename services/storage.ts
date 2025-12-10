@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Person, Settings } from '@/types/events';
+import { ChecklistTemplate } from '@/types/checklist';
 
 const STORAGE_KEYS = {
   PEOPLE: '@birthday_reminder:people',
   SETTINGS: '@birthday_reminder:settings',
   CUSTOM_TYPES: '@birthday_reminder:custom_types',
+  CHECKLIST_TEMPLATES: '@birthday_reminder:checklist_templates',
 } as const;
 
 // People storage
@@ -70,6 +72,27 @@ export async function saveCustomTypes(customTypes: any[]): Promise<void> {
   }
 }
 
+// Checklist templates storage
+export async function loadChecklistTemplates(): Promise<ChecklistTemplate[]> {
+  try {
+    const data = await AsyncStorage.getItem(STORAGE_KEYS.CHECKLIST_TEMPLATES);
+    if (!data) return [];
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error loading checklist templates:', error);
+    return [];
+  }
+}
+
+export async function saveChecklistTemplates(templates: ChecklistTemplate[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.CHECKLIST_TEMPLATES, JSON.stringify(templates));
+  } catch (error) {
+    console.error('Error saving checklist templates:', error);
+    throw error;
+  }
+}
+
 // Clear all data
 export async function clearAllData(): Promise<void> {
   try {
@@ -77,6 +100,7 @@ export async function clearAllData(): Promise<void> {
       STORAGE_KEYS.PEOPLE,
       STORAGE_KEYS.SETTINGS,
       STORAGE_KEYS.CUSTOM_TYPES,
+      STORAGE_KEYS.CHECKLIST_TEMPLATES,
     ]);
   } catch (error) {
     console.error('Error clearing data:', error);

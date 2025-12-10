@@ -1,28 +1,112 @@
 // AdMob service for managing ads
 // This file provides utilities for showing interstitial ads
 
-// Note: For Expo, you'll need to configure AdMob properly:
-// 1. Add AdMob app ID to app.json
-// 2. Install and configure react-native-google-mobile-ads or expo-ads-admob
-// 3. Set up ad unit IDs in your AdMob account
+// Lazy import to avoid errors if module is not available
+let mobileAdsModule: any = null;
+let InterstitialAdClass: any = null;
+let AdEventTypeEnum: any = null;
+let TestIdsEnum: any = null;
+let moduleChecked = false;
+
+function checkAdsModule() {
+  // Temporarily disable ads until native module is properly linked
+  // TODO: Re-enable after fixing native module linking
+  moduleChecked = true;
+  return false;
+  
+  /* Original code - disabled until native module is fixed
+  if (moduleChecked) return mobileAdsModule !== null;
+  
+  moduleChecked = true;
+  
+  // Check if module is available before requiring
+  try {
+    if (typeof require === 'undefined') {
+      return false;
+    }
+    
+    // Try to require the module
+    const adsModule = require('react-native-google-mobile-ads');
+    
+    // Check if required module has the expected exports
+    if (!adsModule) {
+      return false;
+    }
+    
+    mobileAdsModule = adsModule.default || adsModule;
+    InterstitialAdClass = adsModule.InterstitialAd;
+    AdEventTypeEnum = adsModule.AdEventType;
+    TestIdsEnum = adsModule.TestIds;
+    
+    // Verify we got the expected classes
+    if (!mobileAdsModule || !InterstitialAdClass) {
+      return false;
+    }
+    
+    return true;
+  } catch (error: any) {
+    // Silently fail - ads are optional
+    if (error?.message?.includes('RNGoogleMobileAdsModule')) {
+      console.warn('Google Mobile Ads native module not linked. Ads will be disabled.');
+    }
+    return false;
+  }
+  */
+}
 
 let interstitialAd: any = null;
 let isInitialized = false;
+let isAdLoaded = false;
 
 export async function initializeAds() {
   if (isInitialized) return;
   
+  // Check if module is available (lazy load)
+  if (!checkAdsModule() || !mobileAdsModule || !InterstitialAdClass) {
+    console.warn('Google Mobile Ads module not available, skipping initialization');
+    return;
+  }
+  
   try {
     // Initialize AdMob
-    // Example:
-    // import mobileAds from 'react-native-google-mobile-ads';
-    // await mobileAds().initialize();
-    // 
-    // Load interstitial ad
-    // import { InterstitialAd, AdEventType, TestIds } from 'react-native-google-mobile-ads';
-    // interstitialAd = InterstitialAd.createForAdRequest(TestIds.INTERSTITIAL, {
-    //   requestNonPersonalizedAdsOnly: true,
-    // });
+    await mobileAdsModule().initialize();
+    
+    // Create and load interstitial ad
+    // Use test ad unit ID in development, actual ad unit ID in production
+    const adUnitId = __DEV__ 
+      ? TestIdsEnum?.INTERSTITIAL 
+      : 'ca-app-pub-3940256099942544/1033173712'; // Replace with your actual interstitial ad unit ID
+    
+    if (!adUnitId) {
+      console.warn('Ad unit ID not available');
+      return;
+    }
+    
+    interstitialAd = InterstitialAdClass.createForAdRequest(adUnitId, {
+      requestNonPersonalizedAdsOnly: true,
+    });
+
+    // Set up event listeners
+    const unsubscribeLoaded = interstitialAd.addAdEventListener(AdEventTypeEnum?.LOADED, () => {
+      isAdLoaded = true;
+    });
+
+    const unsubscribeClosed = interstitialAd.addAdEventListener(AdEventTypeEnum?.CLOSED, () => {
+      isAdLoaded = false;
+      // Reload the ad for next time
+      interstitialAd?.load();
+    });
+
+    const unsubscribeError = interstitialAd.addAdEventListener(AdEventTypeEnum?.ERROR, (error: any) => {
+      // Only log non-critical errors (no-fill is expected sometimes)
+      if (error?.code !== 'googleMobileAds/no-fill') {
+        console.error('Interstitial ad error:', error);
+      }
+      isAdLoaded = false;
+    });
+
+    // Load the ad
+    interstitialAd.load();
     
     isInitialized = true;
   } catch (error) {
@@ -32,17 +116,29 @@ export async function initializeAds() {
 
 export async function showInterstitialAd(): Promise<boolean> {
   try {
-    if (!interstitialAd) {
-      await initializeAds();
+    // Check if module is available (lazy load)
+    if (!checkAdsModule() || !mobileAdsModule || !InterstitialAdClass) {
+      return false;
     }
     
-    // Show interstitial ad
-    // if (interstitialAd && await interstitialAd.load()) {
-    //   await interstitialAd.show();
-    //   return true;
-    // }
+    if (!interstitialAd) {
+      await initializeAds();
+      // Wait a bit for the ad to load
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
     
-    return false;
+    // Check if ad is loaded and show it
+    if (interstitialAd && isAdLoaded) {
+      await interstitialAd.show();
+      isAdLoaded = false; // Mark as shown, will be reloaded by event listener
+      return true;
+    } else {
+      // Try to load if not loaded
+      if (interstitialAd && !isAdLoaded) {
+        interstitialAd.load();
+      }
+      return false;
+    }
   } catch (error) {
     console.error('Failed to show interstitial ad:', error);
     return false;

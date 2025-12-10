@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import { SectionGroup, SectionHeader } from '@/components/SectionHeader';
 import { TodayCelebrations } from '@/components/TodayCelebrations';
+import { PremiumOnboardingModal, shouldShowPremiumOnboarding, markPremiumOnboardingShown } from '@/components/PremiumOnboardingModal';
 import { Person } from '@/types/events';
 import { daysUntil, nextOccurrence, parseISODate } from '@/lib/date';
 
@@ -23,6 +24,23 @@ export default function UpcomingScreen() {
   const { people } = usePeople();
   const colors = useThemeColors();
   const t = useTranslation();
+  const [showPremiumOnboarding, setShowPremiumOnboarding] = useState(false);
+
+  useEffect(() => {
+    // Show premium onboarding on every app launch (as requested)
+    // You can modify shouldShowPremiumOnboarding() to check AsyncStorage
+    // if you want it to show only once
+    const timer = setTimeout(() => {
+      setShowPremiumOnboarding(true);
+    }, 500); // Small delay to let the app load first
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleClosePremiumOnboarding = async () => {
+    await markPremiumOnboardingShown();
+    setShowPremiumOnboarding(false);
+  };
 
   const decorated = useMemo<DecoratedPerson[]>(
     () =>
@@ -36,7 +54,15 @@ export default function UpcomingScreen() {
     [people],
   );
 
-  const today = decorated.filter((person) => person.daysUntil === 0);
+  // Get all people in current month (not just today)
+  const currentMonth = useMemo(() => {
+    const now = new Date();
+    return decorated.filter((person) => {
+      return person.upcoming.getMonth() === now.getMonth() && 
+             person.upcoming.getFullYear() === now.getFullYear();
+    });
+  }, [decorated]);
+  
   const sections = useMemo(() => groupPeople(decorated), [decorated]);
 
   return (
@@ -53,7 +79,6 @@ export default function UpcomingScreen() {
               </View>
               <View style={styles.titleTextContainer}>
                 <Text style={[styles.title, { color: colors.textPrimary }]}>{t('upcomingCelebrations')}</Text>
-                <View style={[styles.titleUnderline, { backgroundColor: colors.primaryAccent }]} />
               </View>
             </View>
             <View style={[styles.subtitleContainer, { backgroundColor: `${colors.primaryAccent}08`, borderLeftColor: colors.primaryAccent }]}>
@@ -68,8 +93,8 @@ export default function UpcomingScreen() {
             </View>
           </View>
 
-          {today.length ? (
-            <TodayCelebrations people={today} onSelect={(person) => router.push(`/person/${person.id}`)} />
+          {currentMonth.length > 0 ? (
+            <TodayCelebrations people={currentMonth} onSelect={(person) => router.push(`/person/${person.id}`)} />
           ) : null}
 
           {sections.length ? (
@@ -98,6 +123,10 @@ export default function UpcomingScreen() {
           <Text style={styles.addButtonText}>{t('addCelebration')}</Text>
         </TouchableOpacity>
       </View>
+      <PremiumOnboardingModal
+        visible={showPremiumOnboarding}
+        onClose={handleClosePremiumOnboarding}
+      />
     </SafeAreaView>
   );
 }
@@ -247,12 +276,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginBottom: 4,
   },
-  titleUnderline: {
-    height: 3,
-    width: 60,
-    borderRadius: 2,
-    marginTop: 2,
-  },
   subtitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -289,11 +312,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.3,
-  },
-  adContainer: {
-    marginTop: 24,
-    marginBottom: 8,
-    alignItems: 'center',
   },
 });
 

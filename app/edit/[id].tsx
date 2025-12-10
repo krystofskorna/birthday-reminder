@@ -17,6 +17,7 @@ import { useThemeColors } from '@/hooks/useThemeColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useCustomTypes } from '@/contexts/CustomTypesContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { usePremium } from '@/contexts/PremiumContext';
 import { DateField } from '@/components/DateField';
 import { AddCustomTypeModal } from '@/components/AddCustomTypeModal';
 import { TimePickerModal } from '@/components/TimePickerModal';
@@ -31,14 +32,17 @@ export default function EditScreen() {
   const colors = useThemeColors();
   const { customTypes } = useCustomTypes();
   const { settings } = useSettings();
+  const { isPremium } = usePremium();
   const t = useTranslation();
 
   const person = id ? getPerson(id) : undefined;
 
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [date, setDate] = useState(new Date());
   const [type, setType] = useState<EventType | string>('birthday');
   const [note, setNote] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderLeadTime, setReminderLeadTime] = useState<ReminderLeadTime>(1);
   const [reminderTime, setReminderTime] = useState('09:00');
@@ -46,14 +50,16 @@ export default function EditScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [customLeadTime, setCustomLeadTime] = useState('');
 
-  const reminderOptions = useMemo(() => getReminderOptions(settings.language), [settings.language]);
+  const reminderOptions = useMemo(() => getReminderOptions(settings.language, isPremium), [settings.language, isPremium]);
 
   useEffect(() => {
     if (person) {
-      setName(person.name);
+      setFirstName(person.firstName || person.name.split(' ')[0] || '');
+      setLastName(person.lastName || person.name.split(' ').slice(1).join(' ') || '');
       setDate(parseISODate(person.date));
       setType(person.type);
       setNote(person.note || '');
+      setPhoneNumber(person.phoneNumber || '');
       setReminderEnabled(person.reminderEnabled);
       setReminderLeadTime(person.reminderLeadTime);
       setReminderTime(person.reminderTime || '09:00');
@@ -77,16 +83,18 @@ export default function EditScreen() {
   }
 
   const handleSave = () => {
-    if (!name.trim()) {
+    if (!firstName.trim() && !lastName.trim()) {
       Alert.alert(t('validationError'), t('pleaseEnterName'));
       return;
     }
 
     updatePerson(person.id, {
-      name: name.trim(),
+      firstName: firstName.trim() || undefined,
+      lastName: lastName.trim() || undefined,
       date: toISODate(date),
       type,
       note: note.trim() || undefined,
+      phoneNumber: phoneNumber.trim() || undefined,
       reminderEnabled,
       reminderLeadTime: customLeadTime ? parseInt(customLeadTime, 10) : reminderLeadTime,
       reminderTime,
@@ -108,15 +116,44 @@ export default function EditScreen() {
         </View>
 
         <View style={styles.form}>
-          {/* Name Input */}
+          {/* First Name Input */}
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('nameRequired')}</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+              {settings.language === 'cs' ? 'Jméno *' : 'First Name *'}
+            </Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: `${colors.primaryAccent}33` }]}
-              value={name}
-              onChangeText={setName}
-              placeholder={t('enterName')}
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholder={settings.language === 'cs' ? 'Zadejte křestní jméno' : 'Enter first name'}
               placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          {/* Last Name Input */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+              {settings.language === 'cs' ? 'Příjmení' : 'Last Name'}
+            </Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: `${colors.primaryAccent}33` }]}
+              value={lastName}
+              onChangeText={setLastName}
+              placeholder={settings.language === 'cs' ? 'Zadejte příjmení' : 'Enter last name'}
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          {/* Phone Number Input */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('phoneNumber')}</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: `${colors.primaryAccent}33` }]}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              placeholder={t('enterPhoneNumber')}
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="phone-pad"
             />
           </View>
 
@@ -240,6 +277,7 @@ export default function EditScreen() {
               textAlignVertical="top"
             />
           </View>
+
 
           {/* Reminder Settings */}
           <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.cardShadow }]}>
@@ -537,5 +575,38 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 18,
     textAlign: 'center',
+  },
+  removeChecklistButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  removeChecklistText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  sectionLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+    flexWrap: 'wrap',
+  },
+  premiumBadgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  premiumBadgeTextInline: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

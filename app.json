@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.skornakrystof.birthdayreminder"
+      "bundleIdentifier": "com.skornakrystof.birthdayreminder",
+      "infoPlist": {
+        "NSContactsUsageDescription": "This app needs access to your contacts to import birthday information."
+      }
     },
     "web": {
       "bundler": "metro",
@@ -20,10 +23,18 @@
     "plugins": [
       "expo-router",
       "expo-font",
+      "expo-contacts",
       [
         "react-native-google-mobile-ads",
         {
           "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ],
+      [
+        "react-native-cloud-storage",
+        {
+          "iCloudContainerIdentifier": "iCloud.com.skornakrystof.birthdayreminder",
+          "iCloudContainerEnvironment": "Production"
         }
       ]
     ],
@@ -31,7 +42,10 @@
       "typedRoutes": true
     },
     "android": {
-      "package": "com.yourcompany.birthdayreminder"
+      "package": "com.yourcompany.birthdayreminder",
+      "permissions": [
+        "READ_CONTACTS"
+      ]
     }
   }
 }

@@ -17,6 +17,7 @@ import { useThemeColors } from '@/hooks/useThemeColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useCustomTypes } from '@/contexts/CustomTypesContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { ActionButtons } from '@/components/ActionButtons';
 
 export default function PersonDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -67,6 +68,7 @@ export default function PersonDetailScreen() {
   const handleReminderToggle = (value: boolean) => {
     updatePerson(person.id, { ...person, reminderEnabled: value });
   };
+
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -124,6 +126,10 @@ export default function PersonDetailScreen() {
             <Text style={[styles.noteText, { color: colors.textSecondary }]}>{person.note}</Text>
           </View>
         ) : null}
+
+        {/* One-Tap Actions (Premium) */}
+        <ActionButtons phoneNumber={person.phoneNumber} personName={person.name} />
+
       </ScrollView>
     </SafeAreaView>
   );

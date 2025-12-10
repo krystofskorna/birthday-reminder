@@ -2,9 +2,11 @@ import React, { PropsWithChildren, useCallback, useContext, useEffect, useMemo, 
 import { Person, ReminderLeadTime } from '@/types/events';
 import { toISODate } from '@/lib/date';
 import { scheduleEventNotification, cancelEventNotification } from '@/services/notifications';
+import { scheduleCallReminders, updateCallReminderForPerson } from '@/services/callReminders';
 import { useSettings } from '@/contexts/SettingsContext';
 import { loadPeople, savePeople } from '@/services/storage';
 import { showInterstitialAfterAction } from '@/services/ads';
+import { savePeopleToICloud } from '@/services/icloudSync';
 
 type PeopleAction =
   | { type: 'load'; payload: Person[] }
@@ -52,14 +54,18 @@ interface PeopleContextValue {
 }
 
 export interface PersonInput {
-  name: string;
+  name?: string; // Full name (if firstName/lastName not provided)
+  firstName?: string; // First name (křestní jméno)
+  lastName?: string; // Last name (příjmení)
   date: string;
   type: Person['type'];
   note?: string;
   profileImageUri?: string;
+  phoneNumber?: string; // For contact integration and one-tap actions
   reminderEnabled?: boolean;
   reminderLeadTime?: ReminderLeadTime;
   reminderTime?: string;
+  linkedNamedayId?: string; // ID of linked nameday person
 }
 
 const PeopleContext = React.createContext<PeopleContextValue | undefined>(undefined);
@@ -75,22 +81,42 @@ export function PeopleProvider({ children }: PropsWithChildren) {
     });
   }, []);
 
-  // Save to storage and update widget whenever people change (after initial load)
+  // Save to storage and sync to iCloud whenever people change (after initial load)
   useEffect(() => {
     if (state.hasLoaded && state.people.length >= 0) {
       savePeople(state.people).catch(console.error);
+      // Sync to iCloud if enabled
+      if (settings?.icloudSyncEnabled) {
+        savePeopleToICloud(state.people).catch(console.error);
+      }
+      // Schedule call reminders
+      scheduleCallReminders(state.people, settings.language).catch(console.error);
     }
-  }, [state.people, state.hasLoaded]);
+  }, [state.people, state.hasLoaded, settings?.icloudSyncEnabled, settings?.language]);
 
   const addPerson = useCallback((input: PersonInput): Person => {
     const now = new Date();
+    
+    // Combine firstName + lastName or use name
+    let fullName: string;
+    if (input.firstName || input.lastName) {
+      const parts = [input.firstName?.trim(), input.lastName?.trim()].filter(Boolean);
+      fullName = parts.join(' ');
+    } else {
+      fullName = input.name?.trim() || '';
+    }
+    
     const person: Person = {
       id: generatePersonId(),
-      name: input.name.trim(),
+      name: fullName,
+      firstName: input.firstName?.trim() || undefined,
+      lastName: input.lastName?.trim() || undefined,
       date: input.date,
       type: input.type,
       note: input.note?.trim() || undefined,
       profileImageUri: input.profileImageUri,
+      phoneNumber: input.phoneNumber?.trim() || undefined,
+      linkedNamedayId: input.linkedNamedayId,
       reminderEnabled: input.reminderEnabled ?? true,
       reminderLeadTime: input.reminderLeadTime ?? 1,
       reminderTime: input.reminderTime ?? '09:00',
@@ -108,17 +134,34 @@ export function PeopleProvider({ children }: PropsWithChildren) {
     const existing = state.people.find(p => p.id === id);
     if (!existing) return;
 
+    // Combine firstName + lastName or use name
+    let fullName: string;
+    if (updates.firstName !== undefined || updates.lastName !== undefined) {
+      const firstName = updates.firstName?.trim() ?? existing.firstName;
+      const lastName = updates.lastName?.trim() ?? existing.lastName;
+      const parts = [firstName, lastName].filter(Boolean);
+      fullName = parts.join(' ');
+    } else if (updates.name !== undefined) {
+      fullName = updates.name.trim();
+    } else {
+      fullName = existing.name;
+    }
+
     const updatedPerson: Person = {
       ...existing,
-        name: updates.name.trim(),
-        date: updates.date,
-        type: updates.type,
-        note: updates.note?.trim() || undefined,
-        profileImageUri: updates.profileImageUri,
-        reminderEnabled: updates.reminderEnabled ?? true,
-        reminderLeadTime: updates.reminderLeadTime ?? 1,
+      name: fullName,
+      firstName: updates.firstName?.trim() ?? existing.firstName,
+      lastName: updates.lastName?.trim() ?? existing.lastName,
+      date: updates.date,
+      type: updates.type,
+      note: updates.note?.trim() ?? existing.note,
+      profileImageUri: updates.profileImageUri ?? existing.profileImageUri,
+      phoneNumber: updates.phoneNumber?.trim() ?? existing.phoneNumber,
+      linkedNamedayId: updates.linkedNamedayId ?? existing.linkedNamedayId,
+      reminderEnabled: updates.reminderEnabled ?? existing.reminderEnabled ?? true,
+      reminderLeadTime: updates.reminderLeadTime ?? existing.reminderLeadTime ?? 1,
       reminderTime: updates.reminderTime ?? existing.reminderTime ?? '09:00',
-        updatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     dispatch({
@@ -127,6 +170,10 @@ export function PeopleProvider({ children }: PropsWithChildren) {
     });
     
     scheduleEventNotification(updatedPerson, settings.language).catch(console.error);
+    // Update call reminder if phone number changed
+    if (updatedPerson.phoneNumber) {
+      updateCallReminderForPerson(updatedPerson, settings.language).catch(console.error);
+    }
   }, [state.people, settings.language]);
 
   const removePerson = useCallback((id: string) => {

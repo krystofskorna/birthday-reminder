@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ScrollView,
@@ -17,51 +17,128 @@ import { useThemeColors } from '@/hooks/useThemeColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useCustomTypes } from '@/contexts/CustomTypesContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { usePremium } from '@/contexts/PremiumContext';
 import { DateField } from '@/components/DateField';
 import { AddCustomTypeModal } from '@/components/AddCustomTypeModal';
 import { TimePickerModal } from '@/components/TimePickerModal';
+import { ContactPickerModal } from '@/components/ContactPickerModal';
 import { EventType, ReminderLeadTime } from '@/types/events';
 import { getReminderOptions } from '@/constants/reminders';
-import { toISODate } from '@/lib/date';
+import { toISODate, parseISODate } from '@/lib/date';
+import { ContactData } from '@/services/contacts';
+import { suggestNameDayDate } from '@/lib/nameDays';
 
 export default function AddScreen() {
   const router = useRouter();
-  const { addPerson } = usePeople();
+  const { addPerson: addPersonContext } = usePeople();
   const colors = useThemeColors();
   const { customTypes } = useCustomTypes();
   const { settings } = useSettings();
+  const { isPremium } = usePremium();
   const t = useTranslation();
 
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [date, setDate] = useState(new Date());
   const [type, setType] = useState<EventType | string>('birthday');
   const [note, setNote] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderLeadTime, setReminderLeadTime] = useState<ReminderLeadTime>(1);
   const [reminderTime, setReminderTime] = useState('09:00');
   const [showCustomTypeModal, setShowCustomTypeModal] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showContactPicker, setShowContactPicker] = useState(false);
   const [customLeadTime, setCustomLeadTime] = useState('');
+  const [showAddNamedayPrompt, setShowAddNamedayPrompt] = useState(false);
 
-  const reminderOptions = useMemo(() => getReminderOptions(settings.language), [settings.language]);
+  const reminderOptions = useMemo(() => getReminderOptions(settings.language, isPremium), [settings.language, isPremium]);
+
+  // Auto-suggest nameday when firstName changes and type is birthday
+  useEffect(() => {
+    if (firstName.trim() && type === 'birthday' && settings.preferredCountryCode) {
+      const suggestedDate = suggestNameDayDate(firstName.trim(), settings.preferredCountryCode);
+      if (suggestedDate && !showAddNamedayPrompt) {
+        setShowAddNamedayPrompt(true);
+      }
+    } else {
+      setShowAddNamedayPrompt(false);
+    }
+  }, [firstName, type, settings.preferredCountryCode]);
 
   const handleSave = () => {
-    if (!name.trim()) {
+    if (!firstName.trim() && !lastName.trim()) {
       Alert.alert(t('validationError'), t('pleaseEnterName'));
       return;
     }
 
-    addPerson({
-      name: name.trim(),
+    addPersonContext({
+      firstName: firstName.trim() || undefined,
+      lastName: lastName.trim() || undefined,
       date: toISODate(date),
       type,
       note: note.trim() || undefined,
+      phoneNumber: phoneNumber.trim() || undefined,
       reminderEnabled,
       reminderLeadTime: customLeadTime ? (parseInt(customLeadTime, 10) as ReminderLeadTime) : reminderLeadTime,
       reminderTime,
     });
 
     router.back();
+  };
+
+  const handleContactSelect = (contactData: ContactData) => {
+    // Try to split name into first and last name
+    const nameParts = contactData.name.trim().split(/\s+/);
+    if (nameParts.length > 1) {
+      setFirstName(nameParts[0]);
+      setLastName(nameParts.slice(1).join(' '));
+    } else {
+      setFirstName(nameParts[0] || '');
+      setLastName('');
+    }
+    if (contactData.phoneNumber) {
+      setPhoneNumber(contactData.phoneNumber);
+    }
+    if (contactData.birthday) {
+      setDate(parseISODate(contactData.birthday));
+    }
+  };
+
+  const handleAddNameday = () => {
+    if (!firstName.trim() || !settings.preferredCountryCode) return;
+    const suggestedDate = suggestNameDayDate(firstName.trim(), settings.preferredCountryCode);
+    if (suggestedDate) {
+      // Create birthday person first
+      const birthdayPerson = addPersonContext({
+        firstName: firstName.trim(),
+        lastName: lastName.trim() || undefined,
+        date: toISODate(date),
+        type: 'birthday',
+        note: note.trim() || undefined,
+        phoneNumber: phoneNumber.trim() || undefined,
+        reminderEnabled,
+        reminderLeadTime: customLeadTime ? (parseInt(customLeadTime, 10) as ReminderLeadTime) : reminderLeadTime,
+        reminderTime,
+      });
+      
+      // Create nameday person linked to birthday
+      addPersonContext({
+        firstName: firstName.trim(),
+        lastName: lastName.trim() || undefined,
+        date: toISODate(suggestedDate),
+        type: 'nameday',
+        note: note.trim() || undefined,
+        phoneNumber: phoneNumber.trim() || undefined,
+        reminderEnabled,
+        reminderLeadTime: customLeadTime ? (parseInt(customLeadTime, 10) as ReminderLeadTime) : reminderLeadTime,
+        reminderTime,
+        linkedNamedayId: birthdayPerson.id, // Link back to birthday
+      });
+      
+      router.back();
+    }
+    setShowAddNamedayPrompt(false);
   };
 
   return (
@@ -77,15 +154,89 @@ export default function AddScreen() {
         </View>
 
         <View style={styles.form}>
-          {/* Name Input */}
+          {/* Import from Contacts Button */}
+          <TouchableOpacity
+            style={[styles.importButton, { backgroundColor: colors.surface, borderColor: colors.primaryAccent }]}
+            onPress={() => setShowContactPicker(true)}
+          >
+            <Feather name="users" size={20} color={colors.primaryAccent} />
+            <Text style={[styles.importButtonText, { color: colors.primaryAccent }]}>
+              {t('importFromContacts')}
+            </Text>
+          </TouchableOpacity>
+
+          {/* First Name Input */}
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('nameRequired')}</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+              {settings.language === 'cs' ? 'Jméno *' : 'First Name *'}
+            </Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: `${colors.primaryAccent}33` }]}
-              value={name}
-              onChangeText={setName}
-              placeholder={t('enterName')}
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholder={settings.language === 'cs' ? 'Zadejte křestní jméno' : 'Enter first name'}
               placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          {/* Last Name Input */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+              {settings.language === 'cs' ? 'Příjmení' : 'Last Name'}
+            </Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: `${colors.primaryAccent}33` }]}
+              value={lastName}
+              onChangeText={setLastName}
+              placeholder={settings.language === 'cs' ? 'Zadejte příjmení' : 'Enter last name'}
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          {/* Auto-suggest nameday prompt */}
+          {showAddNamedayPrompt && type === 'birthday' && (
+            <View style={[styles.section, styles.namedayPrompt]}>
+              <View style={[styles.namedayPromptCard, { backgroundColor: `${colors.namedayAccent}15`, borderColor: colors.namedayAccent }]}>
+                <View style={styles.namedayPromptContent}>
+                  <Feather name="info" size={18} color={colors.namedayAccent} />
+                  <Text style={[styles.namedayPromptText, { color: colors.textPrimary }]}>
+                    {settings.language === 'cs' 
+                      ? `Chcete přidat i svátek pro ${firstName.trim()}?`
+                      : `Would you like to add a name day for ${firstName.trim()}?`}
+                  </Text>
+                </View>
+                <View style={styles.namedayPromptButtons}>
+                  <TouchableOpacity
+                    style={[styles.namedayPromptButton, { backgroundColor: colors.namedayAccent }]}
+                    onPress={handleAddNameday}
+                  >
+                    <Text style={styles.namedayPromptButtonText}>
+                      {settings.language === 'cs' ? 'Ano, přidat' : 'Yes, add'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.namedayPromptButton, styles.namedayPromptButtonSecondary, { borderColor: colors.textSecondary }]}
+                    onPress={() => setShowAddNamedayPrompt(false)}
+                  >
+                    <Text style={[styles.namedayPromptButtonText, { color: colors.textSecondary }]}>
+                      {t('cancel')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Phone Number Input */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('phoneNumber')}</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: `${colors.primaryAccent}33` }]}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              placeholder={t('enterPhoneNumber')}
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="phone-pad"
             />
           </View>
 
@@ -210,6 +361,7 @@ export default function AddScreen() {
             />
           </View>
 
+
           {/* Reminder Settings */}
           <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.cardShadow }]}>
             <View style={styles.cardHeader}>
@@ -330,6 +482,11 @@ export default function AddScreen() {
         initialTime={reminderTime}
         onClose={() => setShowTimePicker(false)}
         onSelect={setReminderTime}
+      />
+      <ContactPickerModal
+        visible={showContactPicker}
+        onClose={() => setShowContactPicker(false)}
+        onSelect={handleContactSelect}
       />
     </SafeAreaView>
   );
@@ -496,5 +653,92 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
+  },
+  importButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+    marginBottom: 20,
+  },
+  importButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  namedayPrompt: {
+    marginTop: -8,
+  },
+  namedayPromptCard: {
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  namedayPromptContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  namedayPromptText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  namedayPromptButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  namedayPromptButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  namedayPromptButtonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+  },
+  namedayPromptButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  removeChecklistButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  removeChecklistText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  sectionLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+    flexWrap: 'wrap',
+  },
+  premiumBadgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  premiumBadgeTextInline: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

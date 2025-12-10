@@ -55,9 +55,11 @@ export const EventCard = memo(function EventCard({ person, onPress }: Props) {
           <Feather name={iconName} size={24} color={accentColor} />
         </View>
         <View style={styles.info}>
-          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
-            {person.name}
-          </Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+              {person.name}
+            </Text>
+          </View>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={2}>
             {buildSubtitle(person, upcomingDate, turningAge, customType || null, t, settings.language)}
           </Text>
@@ -130,9 +132,15 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   title: {
     fontSize: 18,
     fontWeight: '700',
+    flex: 1,
   },
   subtitle: {
     fontSize: 14,

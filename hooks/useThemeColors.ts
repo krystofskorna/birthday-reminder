@@ -5,7 +5,13 @@ import { themes } from '@/lib/themes';
 export function useThemeColors() {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
-  const { settings } = useSettings();
+  let settings;
+  try {
+    settings = useSettings().settings;
+  } catch (error) {
+    // Fallback if SettingsProvider is not available yet
+    settings = { theme: 'blue' as const };
+  }
   const themeColors = themes[settings.theme];
 
   return {
