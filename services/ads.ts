@@ -75,7 +75,7 @@ export async function initializeAds() {
     // Use test ad unit ID in development, actual ad unit ID in production
     const adUnitId = __DEV__ 
       ? TestIdsEnum?.INTERSTITIAL 
-      : 'ca-app-pub-3940256099942544/1033173712'; // Replace with your actual interstitial ad unit ID
+      : 'ca-app-pub-7020548231542184/5813119287'; // TODO: Create separate interstitial ad unit in AdMob
     
     if (!adUnitId) {
       console.warn('Ad unit ID not available');

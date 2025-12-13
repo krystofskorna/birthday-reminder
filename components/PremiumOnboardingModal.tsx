@@ -19,7 +19,7 @@ interface PremiumOnboardingModalProps {
 export function PremiumOnboardingModal({ visible, onClose }: PremiumOnboardingModalProps) {
   const colors = useThemeColors();
   const t = useTranslation();
-  const { setIsPremium } = useSettings();
+  const { setIsPremium, settings } = useSettings();
   const { isPremium } = usePremium();
   const [fadeAnim] = useState(new Animated.Value(0));
 
@@ -33,7 +33,7 @@ export function PremiumOnboardingModal({ visible, onClose }: PremiumOnboardingMo
     }
   }, [visible]);
 
-  const handleUpgrade = async (type: 'monthly' | 'yearly') => {
+  const handleUpgrade = async (type: 'weekly' | 'yearly' | 'lifetime') => {
     try {
       // Dynamically import purchases module
       const purchasesModule = await import('@/services/purchases');
@@ -115,41 +115,59 @@ export function PremiumOnboardingModal({ visible, onClose }: PremiumOnboardingMo
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Feather name="x" size={24} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
           {/* Hero Section */}
           <View style={styles.heroSection}>
-            <LinearGradient
-              colors={[`${colors.primaryAccent}20`, `${colors.primaryAccent}05`]}
-              style={styles.heroGradient}
-            >
-              <View style={[styles.iconContainer, { backgroundColor: `${colors.primaryAccent}25` }]}>
-                <Text style={styles.heroEmoji}>⭐</Text>
-              </View>
-              <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
-                {t('unlockPremium')}
-              </Text>
-              <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
-                {t('unlockPremiumDesc')}
-              </Text>
-            </LinearGradient>
-          </View>
-
-          {/* Why Buy Section */}
-          <View style={styles.whyBuySection}>
-            <Text style={[styles.whyBuyTitle, { color: colors.textPrimary }]}>
-              {t('whyUpgrade') || 'Why Upgrade to Premium?'}
-            </Text>
-            <Text style={[styles.whyBuyDescription, { color: colors.textSecondary }]}>
-              {t('whyUpgradeDesc') || 'Never miss an important celebration again. Get advanced features, ad-free experience, and more control over your reminders.'}
+            <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
+              {t('unlockPremium')}
             </Text>
           </View>
 
-          {/* Pricing Section - Moved before benefits */}
-          <View style={styles.pricingSection}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+          {/* Benefits List */}
+          <View style={styles.benefitsSection}>
+            <Text style={[styles.benefitsTitle, { color: colors.textPrimary }]}>
+              {t('everythingYouGet')}
+            </Text>
+            <View style={styles.benefitsList}>
+              {benefits.map((benefit, index) => (
+                <View key={index} style={[styles.benefitRow, { backgroundColor: colors.surface }]}>
+                  <View style={[styles.benefitIconCircle, { backgroundColor: `${colors.primaryAccent}15` }]}>
+                    <Text style={styles.benefitEmoji}>{benefit.emoji}</Text>
+                  </View>
+                  <View style={styles.benefitTextContainer}>
+                    <Text style={[styles.benefitTitle, { color: colors.textPrimary }]}>
+                      {benefit.title}
+                    </Text>
+                    <Text style={[styles.benefitDescription, { color: colors.textSecondary }]}>
+                      {benefit.description}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Choose Your Plan Header */}
+          <View style={styles.choosePlanSection}>
+            <Text style={[styles.choosePlanTitle, { color: colors.textPrimary }]}>
               {t('chooseYourPlan')}
             </Text>
-            
-            {/* Yearly Plan - Highlighted */}
+          </View>
+
+          {/* Pricing Plans */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pricingSection}
+            style={styles.pricingScrollView}
+          >
+            {/* Yearly Plan - Featured */}
             <TouchableOpacity
               style={[styles.planCard, styles.planCardFeatured, { 
                 backgroundColor: colors.surface, 
@@ -157,130 +175,157 @@ export function PremiumOnboardingModal({ visible, onClose }: PremiumOnboardingMo
                 shadowColor: colors.cardShadow
               }]}
               onPress={() => handleUpgrade('yearly')}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
               <View style={styles.planBadgeContainer}>
                 <View style={[styles.planBadge, { backgroundColor: colors.primaryAccent }]}>
-                  <Text style={styles.planBadgeText}>{t('bestValue')}</Text>
+                  <Text style={styles.planBadgeText}>{t('popular')}</Text>
                 </View>
               </View>
-              <View style={styles.planHeader}>
+              <View style={styles.planContent}>
                 <Text style={[styles.planName, { color: colors.textPrimary }]}>
                   {t('yearlyPlan')}
                 </Text>
-                <View style={styles.planPriceContainer}>
+                <View style={styles.planPriceRow}>
                   <Text style={[styles.planPrice, { color: colors.primaryAccent }]}>
-                    $19.99
+                    {settings.language === 'cs' ? '349 Kč' : '$14.99'}
                   </Text>
                   <Text style={[styles.planPeriod, { color: colors.textSecondary }]}>
                     /{t('year')}
                   </Text>
                 </View>
+                <TouchableOpacity
+                  style={[styles.upgradeButton, { backgroundColor: colors.primaryAccent }]}
+                  onPress={() => handleUpgrade('yearly')}
+                  activeOpacity={0.8}
+                >
+                  {Platform.OS === 'ios' && (
+                    <Text style={styles.appleLogo}></Text>
+                  )}
+                  <Text style={styles.upgradeButtonText}>
+                    {settings.language === 'cs' ? 'Odebírat' : 'Subscribe'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <Text style={[styles.planSavings, { color: colors.primaryAccent }]}>
-                {t('save')} 44% • {t('just')} $1.67/{t('month')}
-              </Text>
-              <TouchableOpacity
-                style={[styles.upgradeButton, { backgroundColor: colors.primaryAccent }]}
-                onPress={() => handleUpgrade('yearly')}
-              >
-                {Platform.OS === 'ios' && (
-                  <Feather name="apple" size={20} color="#FFFFFF" style={styles.appleIcon} />
-                )}
-                <Text style={styles.upgradeButtonText}>
-                  {Platform.OS === 'ios' ? t('subscribeWithApplePay') : t('subscribe')}
-                </Text>
-              </TouchableOpacity>
             </TouchableOpacity>
 
-            {/* Monthly Plan */}
+            {/* Weekly Plan */}
             <TouchableOpacity
               style={[styles.planCard, { 
                 backgroundColor: colors.surface, 
-                borderColor: `${colors.textSecondary}20`,
+                borderColor: `${colors.textSecondary}15`,
                 shadowColor: colors.cardShadow
               }]}
-              onPress={() => handleUpgrade('monthly')}
-              activeOpacity={0.8}
+              onPress={() => handleUpgrade('weekly')}
+              activeOpacity={0.7}
             >
-              <View style={styles.planHeader}>
+              <View style={styles.planBadgeContainer}>
+                {/* Empty space for symmetry */}
+              </View>
+              <View style={styles.planContent}>
                 <Text style={[styles.planName, { color: colors.textPrimary }]}>
-                  {t('monthlyPlan')}
+                  {settings.language === 'cs' ? 'Týdenní' : 'Weekly'}
                 </Text>
-                <View style={styles.planPriceContainer}>
+                <View style={styles.planPriceRow}>
                   <Text style={[styles.planPrice, { color: colors.textPrimary }]}>
-                    $2.99
+                    {settings.language === 'cs' ? '29 Kč' : '$0.99'}
                   </Text>
-                  <Text style={[styles.planPeriod, { color: colors.textSecondary }]}>
-                    /{t('month')}
+                  <Text style={[styles.planPeriod, { color: colors.textPrimary }]}>
+                    /{settings.language === 'cs' ? 'týden' : 'week'}
                   </Text>
                 </View>
+                <TouchableOpacity
+                  style={[styles.upgradeButton, styles.upgradeButtonSecondary, { 
+                    backgroundColor: 'transparent',
+                    borderColor: colors.primaryAccent,
+                    borderWidth: 1.5
+                  }]}
+                  onPress={() => handleUpgrade('weekly')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.upgradeButtonTextSecondary, { color: colors.primaryAccent }]}>
+                    {settings.language === 'cs' ? 'Odebírat' : 'Subscribe'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={[styles.upgradeButton, styles.upgradeButtonSecondary, { 
-                  backgroundColor: 'transparent',
-                  borderColor: colors.primaryAccent,
-                  borderWidth: 2
-                }]}
-                onPress={() => handleUpgrade('monthly')}
-              >
-                <Text style={[styles.upgradeButtonText, { color: colors.primaryAccent }]}>
-                  {t('subscribe')}
+            </TouchableOpacity>
+          </ScrollView>
+
+          {/* Divider with text */}
+          <View style={styles.dividerContainer}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.textSecondary }]} />
+            <Text style={[styles.dividerText, { color: colors.textSecondary }]}>
+              {settings.language === 'cs' ? 'Nebo' : 'Or'}
+            </Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.textSecondary }]} />
+          </View>
+
+          {/* Lifetime Plan - Best Value */}
+          <View style={styles.lifetimeSection}>
+            <TouchableOpacity
+              style={[styles.lifetimeCard, { 
+                backgroundColor: colors.surface, 
+                borderColor: '#FFD700',
+                shadowColor: colors.cardShadow
+              }]}
+              onPress={() => handleUpgrade('lifetime')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.lifetimeBadgeContainer}>
+                <View style={[styles.lifetimeBadge, { backgroundColor: '#FFD700' }]}>
+                  <Feather name="star" size={12} color="#000" />
+                  <Text style={styles.lifetimeBadgeText}>{t('bestValue')}</Text>
+                </View>
+              </View>
+              <View style={styles.lifetimeContent}>
+                <Text style={[styles.lifetimeName, { color: colors.textPrimary }]}>
+                  🏆 {t('lifetimePlan')}
                 </Text>
-              </TouchableOpacity>
+                <Text style={[styles.lifetimeSubtitle, { color: colors.textSecondary }]}>
+                  {t('oneTimePurchase')}
+                </Text>
+                <View style={styles.lifetimePriceRow}>
+                  <Text style={[styles.lifetimePrice, { color: '#FFD700' }]}>
+                    {settings.language === 'cs' ? '999 Kč' : '$39.99'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.lifetimeButton, { backgroundColor: '#FFD700' }]}
+                  onPress={() => handleUpgrade('lifetime')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.lifetimeButtonText}>
+                    {settings.language === 'cs' ? 'Koupit jednou navždy' : 'Buy Once, Own Forever'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </TouchableOpacity>
           </View>
 
-          {/* Benefits Section - Moved after pricing */}
-          <View style={styles.benefitsSection}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              {t('everythingYouGet')}
-            </Text>
-            {benefits.map((benefit, index) => (
-              <View key={index} style={[styles.benefitCard, { backgroundColor: colors.surface, shadowColor: colors.cardShadow }]}>
-                <View style={[styles.benefitIconContainer, { backgroundColor: `${colors.primaryAccent}15` }]}>
-                  <Text style={styles.benefitEmoji}>{benefit.emoji}</Text>
-                </View>
-                <View style={styles.benefitContent}>
-                  <Text style={[styles.benefitTitle, { color: colors.textPrimary }]}>
-                    {benefit.title}
-                  </Text>
-                  <Text style={[styles.benefitDescription, { color: colors.textSecondary }]}>
-                    {benefit.description}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-
-          {/* Trust Section */}
+          {/* Trust Badges */}
           <View style={styles.trustSection}>
-            <View style={styles.trustRow}>
+            <View style={[styles.trustBadge, { backgroundColor: colors.surface }]}>
               <Feather name="shield" size={20} color={colors.primaryAccent} />
-              <Text style={[styles.trustText, { color: colors.textSecondary }]}>
+              <Text style={[styles.trustText, { color: colors.textPrimary }]}>
                 {t('cancelAnytime')}
               </Text>
             </View>
-            <View style={styles.trustRow}>
+            <View style={[styles.trustBadge, { backgroundColor: colors.surface }]}>
               <Feather name="lock" size={20} color={colors.primaryAccent} />
-              <Text style={[styles.trustText, { color: colors.textSecondary }]}>
+              <Text style={[styles.trustText, { color: colors.textPrimary }]}>
                 {t('securePayment')}
-              </Text>
-            </View>
-            <View style={styles.trustRow}>
-              <Feather name="refresh-cw" size={20} color={colors.primaryAccent} />
-              <Text style={[styles.trustText, { color: colors.textSecondary }]}>
-                {t('restorePurchases')}
               </Text>
             </View>
           </View>
 
+          {/* Skip Button */}
           <View style={styles.skipButtonContainer}>
             <TouchableOpacity 
               onPress={onClose} 
-              style={[styles.skipButton, { backgroundColor: `${colors.primaryAccent}15`, borderColor: colors.primaryAccent }]}
+              style={[styles.skipButton, { backgroundColor: colors.primaryAccent }]}
+              activeOpacity={0.8}
             >
-              <Text style={[styles.skipButtonText, { color: colors.primaryAccent }]}>
+              <Text style={styles.skipButtonText}>
                 {t('maybeLater')}
               </Text>
             </TouchableOpacity>
@@ -313,147 +358,118 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 32,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   heroSection: {
-    marginBottom: 32,
-  },
-  heroGradient: {
-    paddingVertical: 40,
     paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 40,
     alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  iconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  heroEmoji: {
-    fontSize: 50,
   },
   heroTitle: {
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: '900',
     textAlign: 'center',
-    marginBottom: 12,
-    letterSpacing: -0.5,
+    marginBottom: 10,
+    letterSpacing: -0.8,
   },
   heroSubtitle: {
-    fontSize: 18,
+    fontSize: 17,
     textAlign: 'center',
-    lineHeight: 26,
-    paddingHorizontal: 20,
+    fontWeight: '500',
+    opacity: 0.7,
   },
-  benefitsSection: {
+  choosePlanSection: {
     paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    marginTop: 32,
     marginBottom: 20,
+  },
+  choosePlanTitle: {
+    fontSize: 22,
+    fontWeight: '800',
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
-  benefitCard: {
-    flexDirection: 'row',
-    padding: 18,
-    borderRadius: 16,
-    marginBottom: 12,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  benefitIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  benefitEmoji: {
-    fontSize: 28,
-  },
-  benefitContent: {
-    flex: 1,
-  },
-  benefitTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  benefitDescription: {
-    fontSize: 14,
-    lineHeight: 20,
+  pricingScrollView: {
+    marginBottom: 40,
   },
   pricingSection: {
     paddingHorizontal: 20,
-    marginBottom: 32,
+    flexDirection: 'row',
+    gap: 12,
   },
   planCard: {
+    width: 280,
     borderRadius: 20,
-    padding: 24,
-    borderWidth: 2,
-    marginBottom: 16,
+    borderWidth: 1.5,
+    overflow: 'hidden',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 12,
-    elevation: 5,
+    elevation: 4,
   },
   planCardFeatured: {
-    borderWidth: 3,
-    transform: [{ scale: 1.02 }],
+    borderWidth: 2.5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
   },
   planBadgeContainer: {
-    alignItems: 'flex-end',
-    marginBottom: 12,
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 1,
   },
   planBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   planBadgeText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  planHeader: {
-    flexDirection: 'row',
+  planContent: {
+    padding: 24,
+    flex: 1,
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
   },
   planName: {
     fontSize: 22,
     fontWeight: '800',
+    marginBottom: 16,
   },
-  planPriceContainer: {
+  planPriceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
+    marginBottom: 24,
   },
   planPrice: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '900',
     letterSpacing: -1,
   },
   planPeriod: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  planSavings: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 20,
+    fontSize: 22,
+    fontWeight: '800',
+    marginLeft: 6,
   },
   upgradeButton: {
     flexDirection: 'row',
@@ -461,64 +477,216 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 14,
-    gap: 8,
+    gap: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   upgradeButtonSecondary: {
     paddingVertical: 14,
   },
-  appleIcon: {
+  appleLogo: {
+    color: '#FFFFFF',
+    fontSize: 18,
     marginRight: 4,
   },
   upgradeButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  upgradeButtonTextSecondary: {
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginVertical: 24,
+    gap: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    opacity: 0.2,
+  },
+  dividerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  lifetimeSection: {
+    paddingHorizontal: 20,
+    marginBottom: 36,
+  },
+  lifetimeCard: {
+    borderRadius: 24,
+    borderWidth: 3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 20,
+    shadowOpacity: 0.25,
+    elevation: 10,
+  },
+  lifetimeBadgeContainer: {
+    position: 'absolute',
+    top: -12,
+    right: 20,
+    zIndex: 1,
+  },
+  lifetimeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  lifetimeBadgeText: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  lifetimeContent: {
+    padding: 28,
+    alignItems: 'center',
+  },
+  lifetimeName: {
+    fontSize: 28,
+    fontWeight: '900',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  lifetimeSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  lifetimePriceRow: {
+    marginBottom: 24,
+  },
+  lifetimePrice: {
+    fontSize: 48,
+    fontWeight: '900',
+    letterSpacing: -2,
+  },
+  lifetimeButton: {
+    width: '100%',
+    paddingVertical: 18,
+    borderRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  lifetimeButtonText: {
+    color: '#000',
+    fontSize: 17,
+    fontWeight: '800',
+    textAlign: 'center',
     letterSpacing: 0.3,
+  },
+  benefitsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 36,
+  },
+  benefitsTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 20,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  benefitsList: {
+    gap: 12,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  benefitIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  benefitEmoji: {
+    fontSize: 28,
+  },
+  benefitTextContainer: {
+    flex: 1,
+  },
+  benefitTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  benefitDescription: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   trustSection: {
     paddingHorizontal: 20,
-    marginBottom: 24,
-    gap: 12,
-  },
-  trustRow: {
-    flexDirection: 'row',
+    marginBottom: 28,
     alignItems: 'center',
     gap: 12,
+  },
+  trustBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    width: '100%',
+    maxWidth: 320,
   },
   trustText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  whyBuySection: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-  whyBuyTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  whyBuyDescription: {
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'center',
-    paddingHorizontal: 10,
+    fontSize: 15,
+    fontWeight: '600',
   },
   skipButtonContainer: {
     paddingHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 20,
+    paddingBottom: 8,
   },
   skipButton: {
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 16,
+    paddingHorizontal: 32,
     borderRadius: 14,
-    borderWidth: 2,
+    width: '100%',
+    maxWidth: 320,
+    alignSelf: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   skipButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
 });

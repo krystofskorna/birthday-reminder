@@ -86,7 +86,7 @@ export function ChecklistTemplateSelector({ onSelect, currentChecklist }: Checkl
                 <View style={styles.templateItemLeft}>
                   <Feather name="x-circle" size={20} color={colors.textSecondary} />
                   <Text style={[styles.templateItemName, { color: colors.textPrimary }]}>
-                    {t('noChecklist') || 'Bez kontrolního seznamu'}
+                    {t('noChecklist')}
                   </Text>
                 </View>
                 <Feather name="chevron-right" size={20} color={colors.textSecondary} />

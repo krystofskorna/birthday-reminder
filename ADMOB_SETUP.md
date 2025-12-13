@@ -1,85 +1,144 @@
-# AdMob Setup Instructions
+# 📱 AdMob Setup - Birthday Reminder
 
-## Overview
-AdMob integration has been set up with placeholder components. To enable actual ads, you need to complete the following steps.
+## ✅ Tvoje AdMob údaje:
 
-## Steps to Enable AdMob
-
-### 1. Create AdMob Account
-- Go to https://admob.google.com/
-- Create an account and add your app
-- Get your AdMob App ID
-
-### 2. Install AdMob Package
-
-For Expo managed workflow, you have two options:
-
-#### Option A: Use Expo Config Plugin (Recommended for Expo SDK 50+)
-```bash
-npm install react-native-google-mobile-ads
+### **iOS App ID**: 
+```
+ca-app-pub-7020548231542184~9146045046
 ```
 
-Then add to `app.json`:
-```json
-{
-  "expo": {
-    "plugins": [
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-xxxxxxxxxxxxxxxx~xxxxxxxxxx",
-          "iosAppId": "ca-app-pub-xxxxxxxxxxxxxxxx~xxxxxxxxxx"
-        }
-      ]
-    ]
-  }
-}
+### **Banner Ad Unit ID**:
+```
+ca-app-pub-7020548231542184/5813119287
 ```
 
-#### Option B: Use Expo Development Build
-You'll need to create a development build after adding the plugin.
+---
 
-### 3. Configure Ad Unit IDs
+## 📋 Co je nastaveno:
 
-Update the following files with your actual ad unit IDs:
+### 1. **app.json** ✅
+- iOS App ID: `ca-app-pub-7020548231542184~9146045046`
+- Plugin: `react-native-google-mobile-ads`
 
-- `components/AdBanner.tsx` - Replace placeholder with actual BannerAd component
-- `services/ads.ts` - Replace placeholder with actual InterstitialAd component
+### 2. **AdBanner.tsx** ✅
+- Banner Ad Unit ID: `ca-app-pub-7020548231542184/5813119287`
+- Test režim v development módu
+- Production režim s tvým ID
 
-### 4. Test Ad Unit IDs
+### 3. **services/ads.ts** ✅
+- Inicializace AdMob
+- Interstitial reklamy (placeholder - potřebuješ vytvořit)
 
-For testing, use Google's test ad unit IDs:
-- Banner: `ca-app-pub-3940256099942544/6300978111`
-- Interstitial: `ca-app-pub-3940256099942544/1033173712`
+---
 
-### 5. Update Components
+## 🚀 Další kroky:
 
-Uncomment and configure the AdMob code in:
-- `components/AdBanner.tsx`
-- `services/ads.ts`
+### **Krok 1: Vytvoř Interstitial reklamní jednotku (volitelné)**
 
-### 6. Build Native App
+1. Jdi na [AdMob Console](https://apps.admob.com)
+2. Vyber svou aplikaci **Birthday Reminder**
+3. Klikni **Add Ad Unit** → **Interstitial**
+4. Zkopíruj Ad Unit ID
+5. Updatuj v `services/ads.ts` řádek 78:
+   ```typescript
+   const adUnitId = __DEV__ 
+     ? TestIdsEnum?.INTERSTITIAL 
+     : 'TVOJE_INTERSTITIAL_AD_UNIT_ID'; // Sem dej nové ID
+   ```
 
-After configuration, you'll need to create a new development build:
+### **Krok 2: Test režim**
+
+V **development módu** (`__DEV__`) se používají **testovací reklamy**.
+V **production buildu** se používají **tvoje skutečné reklamy**.
+
+#### Testování:
 ```bash
-npx expo prebuild
+# Development (test ads)
+npx expo start
+
+# Production build (real ads)
+eas build --platform ios --profile production
+```
+
+### **Krok 3: Ověř implementaci**
+
+Po buildu pro TestFlight:
+
+1. **Neplatící uživatelé** uvidí bannery
+2. **Premium uživatelé** neuvidí reklamy
+3. Reklamy se zobrazí na hlavní stránce (dole)
+
+---
+
+## 📝 Poznámky:
+
+### **Banner umístění:**
+- Hlavní stránka (index.tsx) - dole
+- Pouze pro neplatící uživatele
+- Premium uživatelé vidí "Unlock Premium" kartu místo reklam
+
+### **Compliance:**
+- ✅ `requestNonPersonalizedAdsOnly: true` - GDPR compliant
+- ✅ Reklamy se zobrazují jen pro neplatící
+- ✅ Možnost upgradovat na Premium (bez reklam)
+
+### **AdMob Review:**
+- AdMob kontroluje implementaci
+- Může trvat 24-48 hodin
+- První reklamy se zobrazí až po schválení
+
+---
+
+## 🔧 Troubleshooting:
+
+### **Problém: Reklamy se nezobrazují**
+1. Zkontroluj, že nejsi Premium uživatel
+2. Zkontroluj, že app je v production módu (ne dev)
+3. Počkaj 24-48 hodin na AdMob review
+4. Zkontroluj AdMob konzoli pro chyby
+
+### **Problém: "Native module not linked"**
+```bash
+# Vyčisti build
+cd ios
+rm -rf Pods Podfile.lock
+pod install
+cd ..
+
+# Rebuild
+npx expo prebuild --clean
 npx expo run:ios
-# or
-npx expo run:android
 ```
 
-## Current Implementation
+### **Problém: Test reklamy se zobrazují v produkci**
+- Zkontroluj, že build je production: `eas build --profile production`
+- Ne development: `npx expo run:ios`
 
-- ✅ AdBanner component structure created
-- ✅ Interstitial ad service created
-- ✅ Ad initialization in app root
-- ✅ Interstitial triggers on person add
-- ⚠️ Placeholder components (need actual AdMob integration)
+---
 
-## Notes
+## ✅ Checklist před odesláním na TestFlight:
 
-- The current implementation uses placeholder components that won't show ads until properly configured
-- In development mode, a placeholder banner is shown
-- In production, ads are hidden until AdMob is properly configured
-- Make sure to comply with AdMob policies and test thoroughly before release
+- [x] iOS App ID nastaven v app.json
+- [x] Banner Ad Unit ID nastaven v AdBanner.tsx
+- [x] Test režim funguje v development
+- [x] Production režim používá tvoje ID
+- [ ] (Volitelné) Interstitial Ad Unit vytvořen a nastaven
+- [ ] Reklamy testovány na reálném zařízení
+- [ ] Premium uživatelé nevidí reklamy
+- [ ] AdMob zásady přečteny a implementovány
 
+---
+
+## 📞 AdMob zásady:
+
+Ujisti se, že tvoje implementace splňuje:
+- ✅ Žádné více než 1-2 reklamy na obrazovce
+- ✅ Reklamy nejsou překrývající obsah
+- ✅ Uživatelé mohou odstranit reklamy (Premium)
+- ✅ GDPR compliance (non-personalized ads)
+
+Více na: https://support.google.com/admob/answer/6128543
+
+---
+
+Hotovo! 🎉 Tvoje AdMob je nastaveno a připraveno na TestFlight!

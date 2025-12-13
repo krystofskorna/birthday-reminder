@@ -22,7 +22,9 @@ import { DateField } from '@/components/DateField';
 import { AddCustomTypeModal } from '@/components/AddCustomTypeModal';
 import { TimePickerModal } from '@/components/TimePickerModal';
 import { ContactPickerModal } from '@/components/ContactPickerModal';
+import { QuickChecklistModal } from '@/components/QuickChecklistModal';
 import { EventType, ReminderLeadTime } from '@/types/events';
+import { Checklist } from '@/types/checklist';
 import { getReminderOptions } from '@/constants/reminders';
 import { toISODate, parseISODate } from '@/lib/date';
 import { ContactData } from '@/services/contacts';
@@ -50,29 +52,31 @@ export default function AddScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [customLeadTime, setCustomLeadTime] = useState('');
-  const [showAddNamedayPrompt, setShowAddNamedayPrompt] = useState(false);
+  const [showAddNamedayFromContactPrompt, setShowAddNamedayFromContactPrompt] = useState(false);
+  const [contactDataForNameday, setContactDataForNameday] = useState<ContactData | null>(null);
+  const [checklist, setChecklist] = useState<Checklist | undefined>(undefined);
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
 
   const reminderOptions = useMemo(() => getReminderOptions(settings.language, isPremium), [settings.language, isPremium]);
 
-  // Auto-suggest nameday when firstName changes and type is birthday
-  useEffect(() => {
-    if (firstName.trim() && type === 'birthday' && settings.preferredCountryCode) {
-      const suggestedDate = suggestNameDayDate(firstName.trim(), settings.preferredCountryCode);
-      if (suggestedDate && !showAddNamedayPrompt) {
-        setShowAddNamedayPrompt(true);
-      }
-    } else {
-      setShowAddNamedayPrompt(false);
-    }
-  }, [firstName, type, settings.preferredCountryCode]);
+  // Removed auto-suggest on firstName change - now shows prompt only on save
 
-  const handleSave = () => {
+  const formatNamedayDate = (date: Date, language: Language): string => {
+    const monthNames = language === 'cs' 
+      ? ['ledna', 'února', 'března', 'dubna', 'května', 'června', 'července', 'srpna', 'září', 'října', 'listopadu', 'prosince']
+      : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    return `${date.getDate()}. ${monthNames[date.getMonth()]}`;
+  };
+
+  const handleSave = async () => {
     if (!firstName.trim() && !lastName.trim()) {
       Alert.alert(t('validationError'), t('pleaseEnterName'));
       return;
     }
 
-    addPersonContext({
+    // Save birthday first
+    const savedPerson = addPersonContext({
       firstName: firstName.trim() || undefined,
       lastName: lastName.trim() || undefined,
       date: toISODate(date),
@@ -82,63 +86,144 @@ export default function AddScreen() {
       reminderEnabled,
       reminderLeadTime: customLeadTime ? (parseInt(customLeadTime, 10) as ReminderLeadTime) : reminderLeadTime,
       reminderTime,
+      checklist,
     });
 
+    // If it's a birthday and we have first name, check for nameday and show alert
+    if (type === 'birthday' && firstName.trim() && settings.preferredCountryCode) {
+      try {
+        const suggestedDate = await suggestNameDayDate(firstName.trim(), settings.preferredCountryCode, false);
+        if (suggestedDate) {
+          const formattedDate = formatNamedayDate(suggestedDate, settings.language);
+          const message = settings.language === 'cs'
+            ? `Chcete přidat i svátek pro ${firstName.trim()} na ${formattedDate}?`
+            : `Would you like to add a name day for ${firstName.trim()} on ${formattedDate}?`;
+          
+          Alert.alert(
+            settings.language === 'cs' ? 'Přidat svátek?' : 'Add name day?',
+            message,
+            [
+              {
+                text: settings.language === 'cs' ? 'Jen narozeniny' : 'Birthday only',
+                style: 'cancel',
+                onPress: () => router.back(),
+              },
+              {
+                text: settings.language === 'cs' ? 'Ano, přidat' : 'Yes, add',
+                onPress: () => {
+                  // Create nameday person linked to birthday
+                  addPersonContext({
+                    firstName: firstName.trim(),
+                    lastName: lastName.trim() || undefined,
+                    date: toISODate(suggestedDate),
+                    type: 'nameday',
+                    note: note.trim() || undefined,
+                    phoneNumber: phoneNumber.trim() || undefined,
+                    reminderEnabled,
+                    reminderLeadTime: customLeadTime ? (parseInt(customLeadTime, 10) as ReminderLeadTime) : reminderLeadTime,
+                    reminderTime,
+                    linkedNamedayId: savedPerson.id, // Link back to birthday
+                  });
+                  router.back();
+                },
+              },
+            ]
+          );
+          return; // Stop here, wait for alert interaction
+        }
+      } catch (error) {
+        console.warn('Failed to check nameday:', error);
+      }
+    }
+
+    // No nameday found or not a birthday - close immediately
     router.back();
   };
 
   const handleContactSelect = (contactData: ContactData) => {
     // Try to split name into first and last name
     const nameParts = contactData.name.trim().split(/\s+/);
-    if (nameParts.length > 1) {
-      setFirstName(nameParts[0]);
-      setLastName(nameParts.slice(1).join(' '));
-    } else {
-      setFirstName(nameParts[0] || '');
-      setLastName('');
-    }
+    const firstNameValue = nameParts.length > 1 ? nameParts[0] : (nameParts[0] || '');
+    const lastNameValue = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+    
+    setFirstName(firstNameValue);
+    setLastName(lastNameValue);
+    
     if (contactData.phoneNumber) {
       setPhoneNumber(contactData.phoneNumber);
     }
     if (contactData.birthday) {
       setDate(parseISODate(contactData.birthday));
+      setType('birthday');
+      
+      // If contact has birthday and first name, suggest adding nameday
+      if (firstNameValue.trim() && settings.preferredCountryCode) {
+        // Use async call to get nameday (API disabled, using local data)
+        suggestNameDayDate(firstNameValue.trim(), settings.preferredCountryCode, false)
+          .then((suggestedDate) => {
+            if (suggestedDate) {
+              setContactDataForNameday(contactData);
+              setShowAddNamedayFromContactPrompt(true);
+            }
+          })
+          .catch((error) => {
+            console.warn('Failed to suggest nameday from contact:', error);
+          });
+        return; // Don't close the form yet, wait for user decision
+      }
+    } else {
+      // No birthday, user can choose type manually
+      setType('birthday');
     }
   };
 
-  const handleAddNameday = () => {
-    if (!firstName.trim() || !settings.preferredCountryCode) return;
-    const suggestedDate = suggestNameDayDate(firstName.trim(), settings.preferredCountryCode);
-    if (suggestedDate) {
-      // Create birthday person first
-      const birthdayPerson = addPersonContext({
-        firstName: firstName.trim(),
-        lastName: lastName.trim() || undefined,
-        date: toISODate(date),
-        type: 'birthday',
-        note: note.trim() || undefined,
-        phoneNumber: phoneNumber.trim() || undefined,
-        reminderEnabled,
-        reminderLeadTime: customLeadTime ? (parseInt(customLeadTime, 10) as ReminderLeadTime) : reminderLeadTime,
-        reminderTime,
-      });
-      
-      // Create nameday person linked to birthday
-      addPersonContext({
-        firstName: firstName.trim(),
-        lastName: lastName.trim() || undefined,
-        date: toISODate(suggestedDate),
-        type: 'nameday',
-        note: note.trim() || undefined,
-        phoneNumber: phoneNumber.trim() || undefined,
-        reminderEnabled,
-        reminderLeadTime: customLeadTime ? (parseInt(customLeadTime, 10) as ReminderLeadTime) : reminderLeadTime,
-        reminderTime,
-        linkedNamedayId: birthdayPerson.id, // Link back to birthday
-      });
-      
-      router.back();
+  const handleAddNamedayFromContact = async () => {
+    if (!contactDataForNameday || !firstName.trim() || !settings.preferredCountryCode) return;
+    
+    try {
+      const suggestedDate = await suggestNameDayDate(firstName.trim(), settings.preferredCountryCode, false);
+      if (suggestedDate) {
+        // Create birthday person first
+        const birthdayPerson = addPersonContext({
+          firstName: firstName.trim(),
+          lastName: lastName.trim() || undefined,
+          date: toISODate(date),
+          type: 'birthday',
+          note: note.trim() || undefined,
+          phoneNumber: phoneNumber.trim() || undefined,
+          reminderEnabled,
+          reminderLeadTime: customLeadTime ? (parseInt(customLeadTime, 10) as ReminderLeadTime) : reminderLeadTime,
+          reminderTime,
+        });
+        
+        // Create nameday person linked to birthday
+        addPersonContext({
+          firstName: firstName.trim(),
+          lastName: lastName.trim() || undefined,
+          date: toISODate(suggestedDate),
+          type: 'nameday',
+          note: note.trim() || undefined,
+          phoneNumber: phoneNumber.trim() || undefined,
+          reminderEnabled,
+          reminderLeadTime: customLeadTime ? (parseInt(customLeadTime, 10) as ReminderLeadTime) : reminderLeadTime,
+          reminderTime,
+          linkedNamedayId: birthdayPerson.id, // Link back to birthday
+        });
+        
+        router.back();
+      }
+    } catch (error) {
+      console.error('Failed to add nameday from contact:', error);
+      Alert.alert(t('error'), t('failedToAddNameday') || 'Failed to add nameday');
     }
-    setShowAddNamedayPrompt(false);
+    setShowAddNamedayFromContactPrompt(false);
+    setContactDataForNameday(null);
+  };
+
+  const handleSkipNamedayFromContact = () => {
+    setShowAddNamedayFromContactPrompt(false);
+    setContactDataForNameday(null);
+    // Form is already filled, user can save manually
   };
 
   return (
@@ -193,8 +278,8 @@ export default function AddScreen() {
             />
           </View>
 
-          {/* Auto-suggest nameday prompt */}
-          {showAddNamedayPrompt && type === 'birthday' && (
+          {/* Auto-suggest nameday prompt from contact */}
+          {showAddNamedayFromContactPrompt && contactDataForNameday && (
             <View style={[styles.section, styles.namedayPrompt]}>
               <View style={[styles.namedayPromptCard, { backgroundColor: `${colors.namedayAccent}15`, borderColor: colors.namedayAccent }]}>
                 <View style={styles.namedayPromptContent}>
@@ -208,7 +293,7 @@ export default function AddScreen() {
                 <View style={styles.namedayPromptButtons}>
                   <TouchableOpacity
                     style={[styles.namedayPromptButton, { backgroundColor: colors.namedayAccent }]}
-                    onPress={handleAddNameday}
+                    onPress={handleAddNamedayFromContact}
                   >
                     <Text style={styles.namedayPromptButtonText}>
                       {settings.language === 'cs' ? 'Ano, přidat' : 'Yes, add'}
@@ -216,16 +301,17 @@ export default function AddScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.namedayPromptButton, styles.namedayPromptButtonSecondary, { borderColor: colors.textSecondary }]}
-                    onPress={() => setShowAddNamedayPrompt(false)}
+                    onPress={handleSkipNamedayFromContact}
                   >
                     <Text style={[styles.namedayPromptButtonText, { color: colors.textSecondary }]}>
-                      {t('cancel')}
+                      {settings.language === 'cs' ? 'Jen narozeniny' : 'Birthday only'}
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
           )}
+
 
           {/* Phone Number Input */}
           <View style={styles.section}>
@@ -361,6 +447,34 @@ export default function AddScreen() {
             />
           </View>
 
+          {/* Checklist Section */}
+          <View style={styles.section}>
+            <View style={styles.checklistHeader}>
+              <View style={styles.checklistHeaderLeft}>
+                <View style={[styles.checklistIcon, { backgroundColor: `${colors.primaryAccent}15` }]}>
+                  <Feather name="check-square" size={18} color={colors.primaryAccent} />
+                </View>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('checklist')}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowChecklistModal(true)}
+                style={[styles.checklistButton, { backgroundColor: `${colors.primaryAccent}15` }]}
+              >
+                <Feather name={checklist ? "edit-2" : "plus"} size={16} color={colors.primaryAccent} />
+                <Text style={[styles.checklistButtonText, { color: colors.primaryAccent }]}>
+                  {checklist ? t('edit') : t('addChecklist')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {checklist && checklist.items.length > 0 && (
+              <View style={[styles.checklistPreview, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.checklistPreviewText, { color: colors.textSecondary }]}>
+                  {checklist.items.filter(i => i.completed).length}/{checklist.items.length} {t('completed')}
+                </Text>
+              </View>
+            )}
+          </View>
+
 
           {/* Reminder Settings */}
           <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.cardShadow }]}>
@@ -487,6 +601,13 @@ export default function AddScreen() {
         visible={showContactPicker}
         onClose={() => setShowContactPicker(false)}
         onSelect={handleContactSelect}
+      />
+      <QuickChecklistModal
+        visible={showChecklistModal}
+        onClose={() => setShowChecklistModal(false)}
+        onSave={(newChecklist) => setChecklist(newChecklist)}
+        initialChecklist={checklist}
+        personName={firstName.trim() || lastName.trim() || t('celebration')}
       />
     </SafeAreaView>
   );
@@ -740,5 +861,44 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  checklistHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  checklistHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  checklistIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checklistButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  checklistButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  checklistPreview: {
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  checklistPreviewText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

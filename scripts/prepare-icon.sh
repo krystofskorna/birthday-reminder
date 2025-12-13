@@ -54,3 +54,6 @@ echo "3. Run: npx expo prebuild --clean (to regenerate native projects with new 
 echo "4. Rebuild the app: npx expo run:ios"
 
 
+
+
+

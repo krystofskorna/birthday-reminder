@@ -1,6 +1,6 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { usePeople } from '@/contexts/PeopleContext';
@@ -10,6 +10,12 @@ import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import { SectionGroup, SectionHeader } from '@/components/SectionHeader';
 import { TodayCelebrations } from '@/components/TodayCelebrations';
+import { StatsOverview } from '@/components/StatsOverview';
+import { TodayHighlight } from '@/components/TodayHighlight';
+import { UpcomingAlert } from '@/components/UpcomingAlert';
+import { MonthlyCalendar } from '@/components/MonthlyCalendar';
+import { SearchBar } from '@/components/SearchBar';
+import { FilterModal, FilterOptions } from '@/components/FilterModal';
 import { PremiumOnboardingModal, shouldShowPremiumOnboarding, markPremiumOnboardingShown } from '@/components/PremiumOnboardingModal';
 import { Person } from '@/types/events';
 import { daysUntil, nextOccurrence, parseISODate } from '@/lib/date';
@@ -25,14 +31,17 @@ export default function UpcomingScreen() {
   const colors = useThemeColors();
   const t = useTranslation();
   const [showPremiumOnboarding, setShowPremiumOnboarding] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filters, setFilters] = useState<FilterOptions>({
+    types: new Set(['birthday', 'nameday', 'other']),
+    sortBy: 'date',
+  });
 
   useEffect(() => {
-    // Show premium onboarding on every app launch (as requested)
-    // You can modify shouldShowPremiumOnboarding() to check AsyncStorage
-    // if you want it to show only once
     const timer = setTimeout(() => {
       setShowPremiumOnboarding(true);
-    }, 500); // Small delay to let the app load first
+    }, 500);
     
     return () => clearTimeout(timer);
   }, []);
@@ -54,7 +63,41 @@ export default function UpcomingScreen() {
     [people],
   );
 
-  // Get all people in current month (not just today)
+  // Filter and sort people
+  const filteredPeople = useMemo(() => {
+    let result = decorated;
+
+    // Apply type filter
+    result = result.filter((person) => filters.types.has(person.type));
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((person) =>
+        person.name.toLowerCase().includes(query) ||
+        (person.note && person.note.toLowerCase().includes(query))
+      );
+    }
+
+    // Apply sorting
+    if (filters.sortBy === 'name') {
+      result.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (filters.sortBy === 'type') {
+      result.sort((a, b) => a.type.localeCompare(b.type));
+    }
+
+    return result;
+  }, [decorated, filters, searchQuery]);
+
+  // Get today's celebrations
+  const todayPeople = useMemo(() => {
+    const now = new Date();
+    return decorated.filter((person) => {
+      return person.daysUntil === 0;
+    });
+  }, [decorated]);
+
+  // Get current month celebrations
   const currentMonth = useMemo(() => {
     const now = new Date();
     return decorated.filter((person) => {
@@ -62,8 +105,36 @@ export default function UpcomingScreen() {
              person.upcoming.getFullYear() === now.getFullYear();
     });
   }, [decorated]);
-  
-  const sections = useMemo(() => groupPeople(decorated), [decorated]);
+
+  // Get this week celebrations
+  const thisWeek = useMemo(() => {
+    return decorated.filter((person) => person.daysUntil > 0 && person.daysUntil <= 7);
+  }, [decorated]);
+
+  // Get next celebration in days
+  const nextInDays = useMemo(() => {
+    const next = decorated.find((person) => person.daysUntil > 0);
+    return next ? next.daysUntil : null;
+  }, [decorated]);
+
+  const sections = useMemo(() => groupPeople(filteredPeople), [filteredPeople]);
+
+  const handleDatePress = useCallback((date: Date, people: Person[]) => {
+    if (people.length === 1) {
+      router.push(`/person/${people[0].id}`);
+    } else {
+      // Show alert with list of people
+      const names = people.map(p => p.name).join('\n');
+      Alert.alert(
+        `${date.getDate()}. ${date.toLocaleDateString(undefined, { month: 'long' })}`,
+        names,
+        people.map(person => ({
+          text: person.name,
+          onPress: () => router.push(`/person/${person.id}`),
+        })).concat({ text: t('cancel'), style: 'cancel' })
+      );
+    }
+  }, [router, t]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
@@ -71,6 +142,7 @@ export default function UpcomingScreen() {
         <ScrollView 
           contentContainerStyle={styles.scroll}
           style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
             <View style={styles.titleContainer}>
@@ -81,22 +153,52 @@ export default function UpcomingScreen() {
                 <Text style={[styles.title, { color: colors.textPrimary }]}>{t('upcomingCelebrations')}</Text>
               </View>
             </View>
-            <View style={[styles.subtitleContainer, { backgroundColor: `${colors.primaryAccent}08`, borderLeftColor: colors.primaryAccent }]}>
-              <Feather name="heart" size={16} color={colors.primaryAccent} />
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                {people.length === 0 
-                  ? t('startAddingCelebrations')
-                  : people.length === 1
-                  ? t('youHaveOneCelebration')
-                  : t('youHaveCelebrations', people.length)}
-              </Text>
-            </View>
           </View>
 
-          {currentMonth.length > 0 ? (
-            <TodayCelebrations people={currentMonth} onSelect={(person) => router.push(`/person/${person.id}`)} />
-          ) : null}
+          {/* Stats Overview */}
+          {people.length > 0 && (
+            <StatsOverview
+              totalCelebrations={people.length}
+              thisMonth={currentMonth.length}
+              thisWeek={thisWeek.length}
+              nextInDays={nextInDays}
+            />
+          )}
 
+          {/* Today's Celebration Highlight */}
+          {todayPeople.length > 0 && (
+            <TodayHighlight
+              people={todayPeople}
+              onSelect={(person) => router.push(`/person/${person.id}`)}
+            />
+          )}
+
+          {/* Upcoming Alerts (1-3 days) */}
+          <UpcomingAlert
+            people={decorated}
+            onSelect={(person) => router.push(`/person/${person.id}`)}
+          />
+
+          {/* Monthly Calendar */}
+          <MonthlyCalendar
+            people={people}
+            onDatePress={handleDatePress}
+          />
+
+          {/* Search Bar */}
+          {people.length > 0 && (
+            <SearchBar
+              onSearch={setSearchQuery}
+              onFilterPress={() => setShowFilterModal(true)}
+            />
+          )}
+
+          {/* Current Month Celebrations */}
+          {currentMonth.length > 0 && !todayPeople.length && (
+            <TodayCelebrations people={currentMonth} onSelect={(person) => router.push(`/person/${person.id}`)} />
+          )}
+
+          {/* Sections */}
           {sections.length ? (
             sections.map((section) => (
               <SectionGroup key={section.title}>
@@ -106,6 +208,16 @@ export default function UpcomingScreen() {
                 ))}
               </SectionGroup>
             ))
+          ) : searchQuery || filters.types.size < 3 ? (
+            <View style={styles.emptySearchContainer}>
+              <Feather name="search" size={48} color={colors.textSecondary} />
+              <Text style={[styles.emptySearchText, { color: colors.textPrimary }]}>
+                {t('noResults')}
+              </Text>
+              <Text style={[styles.emptySearchSubtext, { color: colors.textSecondary }]}>
+                {t('tryDifferentSearch')}
+              </Text>
+            </View>
           ) : (
             <EmptyState
               title={t('noBirthdaysYet')}
@@ -123,6 +235,14 @@ export default function UpcomingScreen() {
           <Text style={styles.addButtonText}>{t('addCelebration')}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Modals */}
+      <FilterModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApply={setFilters}
+        currentFilters={filters}
+      />
       <PremiumOnboardingModal
         visible={showPremiumOnboarding}
         onClose={handleClosePremiumOnboarding}
@@ -172,19 +292,16 @@ function groupPeople(people: DecoratedPerson[]): Section[] {
 
   const sections: Section[] = [];
 
-  // Note: Section titles will be translated in the component that uses them
   if (thisWeek.length) {
     sections.push({
-      title: 'This Week', // Will be translated in component
-      subtitle: labelForRange(thisWeek),
+      title: 'This Week',
       people: thisWeek,
     });
   }
 
   if (thisMonth.length) {
     sections.push({
-      title: 'This Month', // Will be translated in component
-      subtitle: labelForRange(thisMonth),
+      title: 'This Month',
       people: thisMonth,
     });
   }
@@ -199,34 +316,11 @@ function groupPeople(people: DecoratedPerson[]): Section[] {
     const group = laterMap.get(key)!;
     sections.push({
       title: key,
-      subtitle: labelForRange(group),
       people: group,
     });
   });
 
   return sections;
-}
-
-function labelForRange(people: DecoratedPerson[]) {
-  if (!people.length) return undefined;
-  const first = people[0].upcoming;
-  const last = people[people.length - 1].upcoming;
-  const sameMonth = first.getMonth() === last.getMonth() && first.getFullYear() === last.getFullYear();
-
-  const format = (date: Date) =>
-    date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-    });
-
-  if (sameMonth) {
-    if (first.getDate() === last.getDate()) {
-      return format(first);
-    }
-    return `${format(first)} – ${format(last)}`;
-  }
-
-  return `${format(first)} → ${format(last)}`;
 }
 
 const styles = StyleSheet.create({
@@ -244,13 +338,12 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   header: {
-    marginBottom: 28,
+    marginBottom: 24,
     marginTop: 8,
   },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
     gap: 14,
   },
   titleIconContainer: {
@@ -271,25 +364,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
     letterSpacing: -0.5,
-    marginBottom: 4,
   },
-  subtitleContainer: {
-    flexDirection: 'row',
+  emptySearchContainer: {
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 16,
-    borderLeftWidth: 3,
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 12,
   },
-  subtitle: {
+  emptySearchText: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 16,
+  },
+  emptySearchSubtext: {
     fontSize: 15,
-    lineHeight: 22,
-    flex: 1,
-    fontWeight: '500',
+    textAlign: 'center',
   },
   addButton: {
     position: 'absolute',
@@ -314,6 +406,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 });
-
-
-

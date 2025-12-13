@@ -34,11 +34,12 @@ async function ensurePurchasesModule() {
 // Product IDs - These need to be configured in App Store Connect
 // For testing, you can use these test product IDs
 export const PRODUCT_IDS = {
-  MONTHLY: 'com.skornakrystof.birthdayreminder.premium.monthly',
+  WEEKLY: 'com.skornakrystof.birthdayreminder.premium.weekly',
   YEARLY: 'com.skornakrystof.birthdayreminder.premium.yearly',
+  LIFETIME: 'com.skornakrystof.birthdayreminder.premium.lifetime',
 };
 
-export type SubscriptionType = 'monthly' | 'yearly';
+export type SubscriptionType = 'weekly' | 'yearly' | 'lifetime';
 
 let isInitialized = false;
 
@@ -82,8 +83,9 @@ export async function getProducts(): Promise<any[]> {
     if (!module) return [];
     
     const products = await module.getProductsAsync([
-      PRODUCT_IDS.MONTHLY,
+      PRODUCT_IDS.WEEKLY,
       PRODUCT_IDS.YEARLY,
+      PRODUCT_IDS.LIFETIME,
     ]);
     return products.results || [];
   } catch (error) {
@@ -105,7 +107,10 @@ export async function purchaseSubscription(
       return { success: false, error: 'In-app purchases not available' };
     }
     
-    const productId = type === 'monthly' ? PRODUCT_IDS.MONTHLY : PRODUCT_IDS.YEARLY;
+    const productId = 
+      type === 'weekly' ? PRODUCT_IDS.WEEKLY :
+      type === 'yearly' ? PRODUCT_IDS.YEARLY :
+      PRODUCT_IDS.LIFETIME;
     
     // Purchase the product
     const purchase = await module.purchaseItemAsync(productId);
@@ -183,8 +188,9 @@ export async function restorePurchases(): Promise<boolean> {
       // Find the most recent premium purchase
       const premiumPurchase = history.results.find(
         (purchase) => 
-          purchase.productId === PRODUCT_IDS.MONTHLY || 
-          purchase.productId === PRODUCT_IDS.YEARLY
+          purchase.productId === PRODUCT_IDS.WEEKLY || 
+          purchase.productId === PRODUCT_IDS.YEARLY ||
+          purchase.productId === PRODUCT_IDS.LIFETIME
       );
       
       if (premiumPurchase) {
@@ -215,14 +221,20 @@ export async function hasActiveSubscription(): Promise<boolean> {
     // In production, verify with App Store receipt validation
     // For now, check if purchase exists and is recent
     const purchase = JSON.parse(purchaseInfo);
+    
+    // Lifetime purchases never expire
+    if (purchase.productId === PRODUCT_IDS.LIFETIME) {
+      return true;
+    }
+    
     const purchaseDate = new Date(purchase.purchaseTime);
     const now = new Date();
     
     // Check if purchase is within subscription period
-    // Monthly: 30 days, Yearly: 365 days
+    // Weekly: 7 days, Yearly: 365 days
     const daysSincePurchase = (now.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24);
-    const isMonthly = purchase.productId === PRODUCT_IDS.MONTHLY;
-    const subscriptionPeriod = isMonthly ? 30 : 365;
+    const isWeekly = purchase.productId === PRODUCT_IDS.WEEKLY;
+    const subscriptionPeriod = isWeekly ? 7 : 365;
     
     return daysSincePurchase < subscriptionPeriod;
   } catch (error) {

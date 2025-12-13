@@ -21,7 +21,9 @@ import { usePremium } from '@/contexts/PremiumContext';
 import { DateField } from '@/components/DateField';
 import { AddCustomTypeModal } from '@/components/AddCustomTypeModal';
 import { TimePickerModal } from '@/components/TimePickerModal';
+import { QuickChecklistModal } from '@/components/QuickChecklistModal';
 import { EventType, ReminderLeadTime } from '@/types/events';
+import { Checklist } from '@/types/checklist';
 import { getReminderOptions } from '@/constants/reminders';
 import { toISODate, parseISODate } from '@/lib/date';
 
@@ -49,6 +51,8 @@ export default function EditScreen() {
   const [showCustomTypeModal, setShowCustomTypeModal] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [customLeadTime, setCustomLeadTime] = useState('');
+  const [checklist, setChecklist] = useState<Checklist | undefined>(person?.checklist);
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
 
   const reminderOptions = useMemo(() => getReminderOptions(settings.language, isPremium), [settings.language, isPremium]);
 
@@ -63,6 +67,7 @@ export default function EditScreen() {
       setReminderEnabled(person.reminderEnabled);
       setReminderLeadTime(person.reminderLeadTime);
       setReminderTime(person.reminderTime || '09:00');
+      setChecklist(person.checklist);
       // If the current lead time is not in the standard options, set customLeadTime
       const isStandard = reminderOptions.some(opt => opt.value === person.reminderLeadTime);
       if (!isStandard) {
@@ -98,6 +103,7 @@ export default function EditScreen() {
       reminderEnabled,
       reminderLeadTime: customLeadTime ? parseInt(customLeadTime, 10) : reminderLeadTime,
       reminderTime,
+      checklist,
     });
 
     router.back();
@@ -278,6 +284,33 @@ export default function EditScreen() {
             />
           </View>
 
+          {/* Checklist Section */}
+          <View style={styles.section}>
+            <View style={styles.checklistHeader}>
+              <View style={styles.checklistHeaderLeft}>
+                <View style={[styles.checklistIcon, { backgroundColor: `${colors.primaryAccent}15` }]}>
+                  <Feather name="check-square" size={18} color={colors.primaryAccent} />
+                </View>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('checklist')}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowChecklistModal(true)}
+                style={[styles.checklistButton, { backgroundColor: `${colors.primaryAccent}15` }]}
+              >
+                <Feather name={checklist ? "edit-2" : "plus"} size={16} color={colors.primaryAccent} />
+                <Text style={[styles.checklistButtonText, { color: colors.primaryAccent }]}>
+                  {checklist ? t('edit') : t('addChecklist')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {checklist && checklist.items.length > 0 && (
+              <View style={[styles.checklistPreview, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.checklistPreviewText, { color: colors.textSecondary }]}>
+                  {checklist.items.filter(i => i.completed).length}/{checklist.items.length} {t('completed')}
+                </Text>
+              </View>
+            )}
+          </View>
 
           {/* Reminder Settings */}
           <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.cardShadow }]}>
@@ -399,6 +432,13 @@ export default function EditScreen() {
         initialTime={reminderTime}
         onClose={() => setShowTimePicker(false)}
         onSelect={setReminderTime}
+      />
+      <QuickChecklistModal
+        visible={showChecklistModal}
+        onClose={() => setShowChecklistModal(false)}
+        onSave={(newChecklist) => setChecklist(newChecklist)}
+        initialChecklist={checklist}
+        personName={firstName.trim() || lastName.trim() || person?.name || t('celebration')}
       />
     </SafeAreaView>
   );
@@ -608,5 +648,44 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  checklistHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  checklistHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  checklistIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checklistButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  checklistButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  checklistPreview: {
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  checklistPreviewText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

@@ -83,7 +83,7 @@ export function AdBanner({
   // Use test ad unit ID in development, actual ad unit ID in production
   const unitId = __DEV__ 
     ? TestIdsEnum?.BANNER 
-    : (adUnitId || 'ca-app-pub-7020548231542184~9146045046'); // Replace with your actual ad unit ID
+    : (adUnitId || 'ca-app-pub-7020548231542184/5813119287'); // Your actual Banner ad unit ID
 
   const bannerSize = size || BannerAdSizeEnum?.BANNER;
 

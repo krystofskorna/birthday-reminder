@@ -1,14 +1,17 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Person } from '@/types/events';
+import { Checklist } from '@/types/checklist';
 import { ageTurning, nextOccurrence, parseISODate } from '@/lib/date';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useCustomTypes } from '@/contexts/CustomTypesContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { usePremium } from '@/contexts/PremiumContext';
+import { usePeople } from '@/contexts/PeopleContext';
 import { Feather } from '@expo/vector-icons';
 import { makeCall, sendSMS, openWhatsApp } from '@/services/actions';
+import { QuickChecklistModal } from './QuickChecklistModal';
 
 interface Props {
   people: Person[];
@@ -20,7 +23,9 @@ export const TodayCelebrations = memo(function TodayCelebrations({ people, onSel
   const { getCustomType } = useCustomTypes();
   const { settings } = useSettings();
   const { canUseOneTapActions } = usePremium();
+  const { updatePerson } = usePeople();
   const t = useTranslation();
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
 
   if (!people.length) return null;
 
@@ -90,28 +95,61 @@ export const TodayCelebrations = memo(function TodayCelebrations({ people, onSel
                           day: 'numeric',
                         })}`}
                   </Text>
+                  
+                  {/* Checklist indicator inside card */}
+                  {person.checklist && person.checklist.items.length > 0 && (
+                    <View style={[styles.checklistPill, { backgroundColor: `${accent}40` }]}>
+                      <Feather name="check-square" size={12} color={accent} />
+                      <Text style={[styles.checklistPillText, { color: accent }]}>
+                        {person.checklist.items.filter(i => i.completed).length}/{person.checklist.items.length}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
-              {canUseOneTapActions && person.phoneNumber && (
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: `${accent}33` }]}
-                    onPress={() => makeCall(person.phoneNumber!)}
-                  >
-                    <Feather name="phone" size={14} color={accent} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: `${accent}33` }]}
-                    onPress={() => sendSMS(person.phoneNumber!, `Hi ${person.name}! `)}
-                  >
-                    <Feather name="message-circle" size={14} color={accent} />
-                  </TouchableOpacity>
-                </View>
-              )}
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: `${accent}33` }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setSelectedPerson(person);
+                  }}
+                >
+                  <Feather name="check-square" size={14} color={accent} />
+                </TouchableOpacity>
+                {canUseOneTapActions && person.phoneNumber && (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: `${accent}33` }]}
+                      onPress={() => makeCall(person.phoneNumber!)}
+                    >
+                      <Feather name="phone" size={14} color={accent} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: `${accent}33` }]}
+                      onPress={() => sendSMS(person.phoneNumber!, `Hi ${person.name}! `)}
+                    >
+                      <Feather name="message-circle" size={14} color={accent} />
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
             </View>
           );
         })}
       </ScrollView>
+      {selectedPerson && (
+        <QuickChecklistModal
+          visible={!!selectedPerson}
+          onClose={() => setSelectedPerson(null)}
+          onSave={(checklist) => {
+            updatePerson(selectedPerson.id, { checklist });
+            setSelectedPerson(null);
+          }}
+          initialChecklist={selectedPerson.checklist}
+          personName={selectedPerson.name}
+        />
+      )}
     </View>
   );
 });
@@ -176,6 +214,20 @@ const styles = StyleSheet.create({
   caption: {
     fontSize: 14,
     marginTop: 6,
+  },
+  checklistPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    marginTop: 10,
+  },
+  checklistPillText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
 

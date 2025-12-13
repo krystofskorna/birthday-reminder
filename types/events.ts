@@ -15,6 +15,7 @@ export interface Person {
   reminderEnabled: boolean;
   reminderLeadTime: ReminderLeadTime; // days before event
   reminderTime?: string; // HH:mm format, defaults to 09:00
+  checklist?: import('./checklist').Checklist; // Premium feature (optional)
   linkedNamedayId?: string; // ID of linked nameday person (if birthday and nameday are linked)
   createdAt: string;
   updatedAt: string;

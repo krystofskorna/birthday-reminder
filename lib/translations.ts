@@ -22,13 +22,49 @@ export const translations = {
     // Event card
     turns: (age: number) => `Turns ${age}`,
     turnsLabel: 'Turns',
+    turnsToday: (age: number) => `Turns ${age} today! 🎂`,
     today: 'Today',
     tomorrow: 'Tomorrow',
     inDays: (days: number) => `In ${days} days`,
     passed: 'Passed',
+    day: 'day',
+    days: 'days',
     
     // Today celebrations
     todaysCelebrations: "Today's Celebrations",
+    todayCelebration: "Today's Celebration",
+    
+    // Stats
+    totalCelebrations: 'Total',
+    nextCelebration: 'Next',
+    
+    // Search and filter
+    searchCelebrations: 'Search celebrations...',
+    filterAndSort: 'Filter & Sort',
+    celebrationType: 'Celebration Type',
+    sortBy: 'Sort By',
+    byDate: 'By Date',
+    byName: 'By Name',
+    byType: 'By Type',
+    applyFilters: 'Apply Filters',
+    reset: 'Reset',
+    noResults: 'No results found',
+    tryDifferentSearch: 'Try a different search or adjust your filters',
+    
+    // Quick actions
+    call: 'Call',
+    message: 'Message',
+    happyBirthday: 'Happy Birthday',
+    
+    // Checklist
+    completed: 'completed',
+    clear: 'Clear',
+    addChecklist: 'Add Checklist',
+    viewAll: 'View All',
+    more: 'more',
+    deleteItemConfirm: 'Delete this item?',
+    clearChecklistConfirm: 'Clear entire checklist?',
+    addItemsBelow: 'Add items below to get started',
     
     // Date picker
     selectDate: 'Select Date',
@@ -64,6 +100,7 @@ export const translations = {
     edit: 'Edit',
     error: 'Error',
     failedToLoadContacts: 'Failed to load contacts. Please check permissions.',
+    failedToAddNameday: 'Failed to add nameday. Please try again.',
     
     // Person detail
     deleteCelebration: 'Delete celebration',
@@ -141,6 +178,19 @@ export const translations = {
     dataClearedDesc: 'All celebrations have been removed.',
     version: 'Version',
     
+    noChecklist: 'No Checklist',
+    birthdayOnly: 'Birthday only',
+    yesAdd: 'Yes, add',
+    addNamedayTitle: 'Add name day?',
+    addNamedayPrompt: (name: string, date: string) => `Would you like to add a name day for ${name} on ${date}?`,
+    failedToSuggestNameday: 'Failed to suggest name day.',
+    
+    // Date months
+    monthNames: {
+      0: 'January', 1: 'February', 2: 'March', 3: 'April', 4: 'May', 5: 'June', 
+      6: 'July', 7: 'August', 8: 'September', 9: 'October', 10: 'November', 11: 'December'
+    },
+    
     // Premium
     premiumRequired: 'Premium Required',
     premiumThemes: 'Upgrade to Premium to unlock all 6 themes',
@@ -203,6 +253,9 @@ export const translations = {
     oneTapActions: 'One-tap call, SMS & WhatsApp',
     monthlyPlan: 'Monthly',
     yearlyPlan: 'Yearly',
+    lifetimePlan: 'Lifetime',
+    oneTimePurchase: 'One-time purchase',
+    bestValue: 'Best Value',
     popular: 'Popular',
     bestValue: 'Best Value',
     month: 'month',
@@ -249,13 +302,49 @@ export const translations = {
     // Event card
     turns: (age: number) => `Dosáhne ${age} let`,
     turnsLabel: 'Dosáhne',
+    turnsToday: (age: number) => `Dnes slaví ${age}. narozeniny! 🎂`,
     today: 'Dnes',
     tomorrow: 'Zítra',
     inDays: (days: number) => `Za ${days} ${days === 1 ? 'den' : days < 5 ? 'dny' : 'dní'}`,
     passed: 'Uplynulo',
+    day: 'den',
+    days: 'dny',
     
     // Today celebrations
     todaysCelebrations: 'Dnešní oslavy',
+    todayCelebration: 'Dnešní oslava',
+    
+    // Stats
+    totalCelebrations: 'Celkem',
+    nextCelebration: 'Další',
+    
+    // Search and filter
+    searchCelebrations: 'Hledat oslavy...',
+    filterAndSort: 'Filtr a řazení',
+    celebrationType: 'Typ oslavy',
+    sortBy: 'Řadit podle',
+    byDate: 'Podle data',
+    byName: 'Podle jména',
+    byType: 'Podle typu',
+    applyFilters: 'Použít filtry',
+    reset: 'Reset',
+    noResults: 'Žádné výsledky',
+    tryDifferentSearch: 'Zkuste jiné vyhledávání nebo upravte filtry',
+    
+    // Quick actions
+    call: 'Zavolat',
+    message: 'Napsat',
+    happyBirthday: 'Všechno nejlepší',
+    
+    // Checklist
+    completed: 'hotovo',
+    clear: 'Vymazat',
+    addChecklist: 'Přidat checklist',
+    viewAll: 'Zobrazit vše',
+    more: 'další',
+    deleteItemConfirm: 'Smazat tuto položku?',
+    clearChecklistConfirm: 'Vymazat celý checklist?',
+    addItemsBelow: 'Přidej položky níže pro začátek',
     
     // Date picker
     selectDate: 'Vyberte datum',
@@ -291,6 +380,50 @@ export const translations = {
     edit: 'Upravit',
     error: 'Chyba',
     failedToLoadContacts: 'Nepodařilo se načíst kontakty. Zkontrolujte prosím oprávnění.',
+    failedToAddNameday: 'Nepodařilo se přidat svátek. Zkuste to prosím znovu.',
+    
+    // Premium
+    premiumRequired: 'Vyžaduje Premium',
+    premiumThemes: 'Upgradujte na Premium pro odemčení všech 6 témat',
+    premiumThemesDesc: 'Premium uživatelé mají přístup ke všem 6 krásným tématům. Upgradujte nyní!',
+    upgradeToPremium: 'Upgradovat na Premium',
+    premiumFeature: 'Premium funkce',
+    unlockPremium: 'Odemknout Premium',
+    unlockPremiumDesc: 'Transformujte svůj zážitek ze sledování oslav s výkonnými funkcemi navrženými tak, abyste nikdy nezmeškali důležitý okamžik.',
+    everythingYouGet: 'Co všechno získáte',
+    adFreeExperience: 'Zážitek bez reklam',
+    adFreeExperienceDesc: 'Užijte si čisté rozhraní bez rozptylování a přerušení.',
+    advancedNotificationControl: 'Pokročilá oznámení',
+    advancedNotificationControlDesc: 'Nastavte si připomínky až 7 dní předem. Už nikdy nezmeškejte oslavu.',
+    allThemesUnlocked: 'Všechna témata odemčena',
+    allThemesUnlockedDesc: 'Vyberte si ze 6 krásných témat a přizpůsobte si vzhled aplikace.',
+    iCloudSyncAndBackup: 'iCloud synchronizace a záloha',
+    iCloudSyncAndBackupDesc: 'Vaše data bezpečně synchronizována napříč všemi vašimi zařízeními. Nikdy nepřijďte o své oslavy.',
+    celebrationChecklists: 'Kontrolní seznamy oslav',
+    celebrationChecklistsDesc: 'Plánujte perfektní oslavy s opakovaně použitelnými šablonami. Zůstaňte organizovaní, nezapomeňte na žádný detail.',
+    oneTapCallSmsWhatsapp: 'Akce jedním klepnutím',
+    oneTapCallSmsWhatsappDesc: 'Volejte, pište SMS nebo zprávy přímo z aplikace. Zůstaňte ve spojení bez námahy.',
+    chooseYourPlan: 'Vyberte si svůj plán',
+    bestValue: 'NEJVÝHODNĚJŠÍ',
+    just: 'Jen',
+    cancelAnytime: 'Zrušte kdykoli, bez otázek',
+    securePayment: 'Bezpečná platba přes Apple Pay',
+    maybeLater: 'Možná později',
+    whyUpgrade: 'Proč upgradovat na Premium?',
+    whyUpgradeDesc: 'Už nikdy nezmeškejte důležitou oslavu. Získejte pokročilé funkce, zážitek bez reklam a větší kontrolu nad vašimi připomínkami.',
+    monthlyPlan: 'Měsíční',
+    weeklyPlan: 'Týdenní',
+    yearlyPlan: 'Roční',
+    lifetimePlan: 'Doživotní',
+    oneTimePurchase: 'Jednorázový nákup',
+    save: 'Uložit',
+    subscribe: 'Předplatit',
+    subscribeWithApplePay: 'Předplatit pomocí Apple Pay',
+    month: 'měsíc',
+    week: 'týden',
+    year: 'rok',
+    restorePurchases: 'Obnovit nákupy',
+    popular: 'Populární',
     
     // Person detail
     deleteCelebration: 'Smazat oslavu',
@@ -415,7 +548,7 @@ export const translations = {
     bestValue: 'Nejlepší hodnota',
     month: 'měsíc',
     year: 'rok',
-    save: 'Ušetřit',
+    save: 'Uložit',
     subscribe: 'Předplatit',
     subscribeWithApplePay: 'Předplatit pomocí Apple Pay',
     premiumFooter: 'Zrušte kdykoli. Předplatné se automaticky obnovuje, pokud není zrušeno alespoň 24 hodin před koncem aktuálního období.',
@@ -444,6 +577,10 @@ export function getTranslation(language: Language, key: TranslationKey, ...args:
   const translation = translations[language][key];
   if (typeof translation === 'function') {
     return translation(...args);
+  }
+  // Handle objects (like monthNames) - this is a simple implementation, might need refinement
+  if (typeof translation === 'object' && translation !== null && args.length > 0) {
+    return (translation as any)[args[0]];
   }
   return translation as string;
 }

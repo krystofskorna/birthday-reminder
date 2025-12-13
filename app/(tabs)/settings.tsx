@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, Share, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -11,6 +12,7 @@ import { usePremium } from '@/contexts/PremiumContext';
 import { themes, themeNames, ThemeName } from '@/lib/themes';
 import { useRouter } from 'expo-router';
 import { LanguagePickerModal } from '@/components/LanguagePickerModal';
+import { PremiumOnboardingModal } from '@/components/PremiumOnboardingModal';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -29,6 +31,7 @@ export default function SettingsScreen() {
   const { customTypes } = useCustomTypes();
   const { canUseAllThemes, isPremium, canUseChecklists } = usePremium();
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const languages = [
     { code: 'en' as const, name: 'English', flag: '🇬🇧' },
@@ -210,51 +213,51 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Premium Section */}
-        <View style={styles.section}>
-          <SectionHeader title="Premium" icon="star" colors={colors} />
-          <SettingRow
-            label={isPremium ? 'Premium Active' : 'Upgrade to Premium'}
-            description={isPremium ? 'You have access to all premium features' : 'Unlock all features and remove ads'}
-            value={isPremium}
-            onValueChange={setIsPremium}
-            icon="star"
-            colors={colors}
-          />
-          {Platform.OS === 'ios' && (
-            <TouchableOpacity
-              style={[styles.actionRow, { backgroundColor: colors.surface }]}
-              onPress={async () => {
-                try {
-                  const purchasesModule = await import('@/services/purchases');
-                  const { restorePurchases } = purchasesModule;
-                  const restored = await restorePurchases();
-                  if (restored) {
-                    setIsPremium(true);
-                    Alert.alert(t('success'), t('purchasesRestored'));
-                  } else {
-                    Alert.alert(t('noPurchases'), t('noPurchasesFound'));
+        {/* Premium Section - Simplified */}
+        {isPremium && (
+          <View style={styles.section}>
+            <SectionHeader title="Premium" icon="star" colors={colors} />
+            <View style={[styles.premiumActiveCard, { backgroundColor: `${colors.primaryAccent}15`, borderColor: colors.primaryAccent }]}>
+              <Feather name="check-circle" size={24} color={colors.primaryAccent} />
+              <Text style={[styles.premiumActiveText, { color: colors.primaryAccent }]}>
+                {settings.language === 'cs' ? 'Premium aktivní' : 'Premium Active'}
+              </Text>
+            </View>
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={[styles.actionRow, { backgroundColor: colors.surface }]}
+                onPress={async () => {
+                  try {
+                    const purchasesModule = await import('@/services/purchases');
+                    const { restorePurchases } = purchasesModule;
+                    const restored = await restorePurchases();
+                    if (restored) {
+                      setIsPremium(true);
+                      Alert.alert(t('success'), t('purchasesRestored'));
+                    } else {
+                      Alert.alert(t('noPurchases'), t('noPurchasesFound'));
+                    }
+                  } catch (error: any) {
+                    Alert.alert(t('error'), error.message || t('restoreFailed'));
                   }
-                } catch (error: any) {
-                  Alert.alert(t('error'), error.message || t('restoreFailed'));
-                }
-              }}
-            >
-              <View style={styles.actionRowLeft}>
-                <Feather name="refresh-cw" size={20} color={colors.primaryAccent} />
-                <View style={styles.actionRowText}>
-                  <Text style={[styles.actionRowLabel, { color: colors.textPrimary }]}>
-                    {t('restorePurchases')}
-                  </Text>
-                  <Text style={[styles.actionRowDescription, { color: colors.textSecondary }]}>
-                    {t('restorePurchasesDesc')}
-                  </Text>
+                }}
+              >
+                <View style={styles.actionRowLeft}>
+                  <Feather name="refresh-cw" size={20} color={colors.primaryAccent} />
+                  <View style={styles.actionRowText}>
+                    <Text style={[styles.actionRowLabel, { color: colors.textPrimary }]}>
+                      {t('restorePurchases')}
+                    </Text>
+                    <Text style={[styles.actionRowDescription, { color: colors.textSecondary }]}>
+                      {t('restorePurchasesDesc')}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-              <Feather name="chevron-right" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          )}
-        </View>
+                <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         <View style={styles.section}>
           <SectionHeader title={t('dataManagement')} icon="database" colors={colors} />
@@ -342,6 +345,11 @@ export default function SettingsScreen() {
         onClose={() => setShowLanguagePicker(false)}
         selectedLanguage={settings.language}
         onSelect={setLanguage}
+      />
+
+      <PremiumOnboardingModal
+        visible={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
       />
     </SafeAreaView>
   );
@@ -837,6 +845,57 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  premiumCardContainer: {
+    marginBottom: 32,
+  },
+  premiumCard: {
+    borderRadius: 24,
+    padding: 24,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  premiumCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  premiumCardIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  premiumCardText: {
+    flex: 1,
+  },
+  premiumCardTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  premiumCardSubtitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.9)',
+  },
+  premiumActiveCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 18,
+    borderRadius: 16,
+    borderWidth: 2,
+    marginBottom: 12,
+  },
+  premiumActiveText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

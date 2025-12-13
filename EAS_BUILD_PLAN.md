@@ -147,3 +147,6 @@ eas build --profile production --platform ios
 **Doporučení:** Pokračujte ve vývoji s aktuálním setupem. Až bude aplikace ready, přidejte EAS Build. Je to otázka několika příkazů, ne týdnů práce.
 
 
+
+
+

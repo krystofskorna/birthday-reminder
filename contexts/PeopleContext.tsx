@@ -65,6 +65,7 @@ export interface PersonInput {
   reminderEnabled?: boolean;
   reminderLeadTime?: ReminderLeadTime;
   reminderTime?: string;
+  checklist?: import('@/types/checklist').Checklist; // Premium feature (optional)
   linkedNamedayId?: string; // ID of linked nameday person
 }
 
@@ -116,6 +117,7 @@ export function PeopleProvider({ children }: PropsWithChildren) {
       note: input.note?.trim() || undefined,
       profileImageUri: input.profileImageUri,
       phoneNumber: input.phoneNumber?.trim() || undefined,
+      checklist: input.checklist,
       linkedNamedayId: input.linkedNamedayId,
       reminderEnabled: input.reminderEnabled ?? true,
       reminderLeadTime: input.reminderLeadTime ?? 1,
@@ -157,6 +159,7 @@ export function PeopleProvider({ children }: PropsWithChildren) {
       note: updates.note?.trim() ?? existing.note,
       profileImageUri: updates.profileImageUri ?? existing.profileImageUri,
       phoneNumber: updates.phoneNumber?.trim() ?? existing.phoneNumber,
+      checklist: updates.checklist !== undefined ? updates.checklist : existing.checklist,
       linkedNamedayId: updates.linkedNamedayId ?? existing.linkedNamedayId,
       reminderEnabled: updates.reminderEnabled ?? existing.reminderEnabled ?? true,
       reminderLeadTime: updates.reminderLeadTime ?? existing.reminderLeadTime ?? 1,
