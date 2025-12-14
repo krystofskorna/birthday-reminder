@@ -304,3 +304,4 @@ Po dokončení těchto kroků:
 
 Pokud něco není jasné nebo potřebuješ pomoc, napiš!
 
+

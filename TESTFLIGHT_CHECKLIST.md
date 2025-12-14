@@ -295,3 +295,4 @@ Po dokončení těchto kroků bude tvoje aplikace na TestFlight a testeři ji bu
 
 Hodně štěstí! 🚀
 
+

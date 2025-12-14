@@ -74,8 +74,8 @@ export const OnboardingTutorial = memo(function OnboardingTutorial({ visible, on
   const step = steps[currentStep];
   
   // Auto-detect language from device locale or use settings
-  const deviceLocale = Localization.locale || Localization.locales[0]?.languageCode || 'en';
-  const isDeviceCzech = deviceLocale.startsWith('cs');
+  const deviceLocale = Localization?.locale || Localization?.locales?.[0]?.languageCode || 'en';
+  const isDeviceCzech = typeof deviceLocale === 'string' && deviceLocale.startsWith('cs');
   const lang = settings.language || (isDeviceCzech ? 'cs' : 'en');
   
   // Animations
