@@ -9,12 +9,6 @@ let TestIdsEnum: any = null;
 let moduleChecked = false;
 
 function checkAdsModule() {
-  // Temporarily disable ads until native module is properly linked
-  // TODO: Re-enable after fixing native module linking
-  moduleChecked = true;
-  return false;
-  
-  /* Original code - disabled until native module is fixed
   if (moduleChecked) return mobileAdsModule !== null;
   
   moduleChecked = true;
@@ -51,7 +45,6 @@ function checkAdsModule() {
     }
     return false;
   }
-  */
 }
 
 let interstitialAd: any = null;

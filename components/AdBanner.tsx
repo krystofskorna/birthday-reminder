@@ -9,11 +9,6 @@ let BannerAdSizeEnum: any = null;
 let TestIdsEnum: any = null;
 
 function loadAdsModule() {
-  // Temporarily disable ads until native module is properly linked
-  // TODO: Re-enable after fixing native module linking
-  return false;
-  
-  /* Original code - disabled until native module is fixed
   if (BannerAdComponent) return true;
   
   // Check if module is available before requiring
@@ -43,7 +38,6 @@ function loadAdsModule() {
     }
     return false;
   }
-  */
 }
 
 interface AdBannerProps {
