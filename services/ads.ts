@@ -54,6 +54,18 @@ let isAdLoaded = false;
 export async function initializeAds() {
   if (isInitialized) return;
   
+  // Don't initialize in Expo Go - native module not available
+  if (__DEV__ && typeof require !== 'undefined') {
+    try {
+      // Test if we're in Expo Go by checking for native module
+      require('react-native-google-mobile-ads');
+    } catch {
+      // In Expo Go - skip initialization silently
+      console.log('AdMob: Skipping initialization in Expo Go (native module not available)');
+      return;
+    }
+  }
+  
   // Check if module is available (lazy load)
   if (!checkAdsModule() || !mobileAdsModule || !InterstitialAdClass) {
     console.warn('Google Mobile Ads module not available, skipping initialization');

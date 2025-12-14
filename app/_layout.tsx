@@ -36,7 +36,13 @@ export default function RootLayout() {
 
   useEffect(() => {
     registerForPushNotificationsAsync();
-    initializeAds();
+    
+    // Initialize ads only in production builds (not in Expo Go)
+    // This prevents "native module not found" errors in development
+    if (!__DEV__) {
+      initializeAds();
+    }
+    
     // Initialize purchases lazily (only when needed)
     // Don't initialize on app start - let it initialize when user tries to purchase
     // This prevents errors if the module isn't available
