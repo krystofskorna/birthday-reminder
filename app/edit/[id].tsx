@@ -122,32 +122,58 @@ export default function EditScreen() {
         </View>
 
         <View style={styles.form}>
-          {/* First Name Input */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-              {settings.language === 'cs' ? 'Jméno *' : 'First Name *'}
-            </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: `${colors.primaryAccent}33` }]}
-              value={firstName}
-              onChangeText={setFirstName}
-              placeholder={settings.language === 'cs' ? 'Zadejte křestní jméno' : 'Enter first name'}
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
+          {/* Name Inputs Card */}
+          <View style={[styles.nameCard, { backgroundColor: colors.surface, shadowColor: colors.cardShadow }]}>
+            <View style={[styles.nameCardHeader, { borderBottomColor: `${colors.textSecondary}15` }]}>
+              <View style={[styles.nameIconContainer, { backgroundColor: `${colors.primaryAccent}15` }]}>
+                <Feather name="user" size={20} color={colors.primaryAccent} />
+              </View>
+              <Text style={[styles.nameCardTitle, { color: colors.textPrimary }]}>
+                {settings.language === 'cs' ? 'Jméno a příjmení' : 'Name'}
+              </Text>
+            </View>
+            
+            {/* First Name Input */}
+            <View style={styles.nameInputGroup}>
+              <View style={styles.nameInputWrapper}>
+                <View style={[styles.inputIconContainer, { backgroundColor: `${colors.primaryAccent}10` }]}>
+                  <Feather name="smile" size={16} color={colors.primaryAccent} />
+                </View>
+                <View style={styles.inputContent}>
+                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                    {settings.language === 'cs' ? 'Jméno *' : 'First Name *'}
+                  </Text>
+                  <TextInput
+                    style={[styles.modernInput, { color: colors.textPrimary }]}
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    placeholder={settings.language === 'cs' ? 'např. Jan' : 'e.g. John'}
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
+              </View>
+            </View>
 
-          {/* Last Name Input */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-              {settings.language === 'cs' ? 'Příjmení' : 'Last Name'}
-            </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: `${colors.primaryAccent}33` }]}
-              value={lastName}
-              onChangeText={setLastName}
-              placeholder={settings.language === 'cs' ? 'Zadejte příjmení' : 'Enter last name'}
-              placeholderTextColor={colors.textSecondary}
-            />
+            {/* Last Name Input */}
+            <View style={styles.nameInputGroup}>
+              <View style={styles.nameInputWrapper}>
+                <View style={[styles.inputIconContainer, { backgroundColor: `${colors.primaryAccent}10` }]}>
+                  <Feather name="users" size={16} color={colors.primaryAccent} />
+                </View>
+                <View style={styles.inputContent}>
+                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                    {settings.language === 'cs' ? 'Příjmení' : 'Last Name'}
+                  </Text>
+                  <TextInput
+                    style={[styles.modernInput, { color: colors.textPrimary }]}
+                    value={lastName}
+                    onChangeText={setLastName}
+                    placeholder={settings.language === 'cs' ? 'např. Novák' : 'e.g. Smith'}
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
+              </View>
+            </View>
           </View>
 
           {/* Phone Number Input */}
@@ -687,5 +713,63 @@ const styles = StyleSheet.create({
   checklistPreviewText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  nameCard: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 24,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  nameCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
+  nameIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nameCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  nameInputGroup: {
+    marginBottom: 16,
+  },
+  nameInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  inputIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inputContent: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modernInput: {
+    fontSize: 17,
+    fontWeight: '500',
+    paddingVertical: 8,
   },
 });
