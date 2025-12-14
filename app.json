@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Birthday Reminder",
-      "slug": "birthday-reminder",
+    "slug": "birthday-reminder",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -37,7 +37,8 @@
           "iCloudContainerIdentifier": "iCloud.com.skornakrystof.birthdayreminder",
           "iCloudContainerEnvironment": "Production"
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true
