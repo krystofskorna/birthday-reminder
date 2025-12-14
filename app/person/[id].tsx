@@ -30,6 +30,9 @@ export default function PersonDetailScreen() {
   const { getCustomType } = useCustomTypes();
   const { settings } = useSettings();
   const t = useTranslation();
+  
+  // All hooks must be called before any conditional returns
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
 
   const details = useMemo(() => {
     if (!person) return null;
@@ -45,15 +48,15 @@ export default function PersonDetailScreen() {
     };
   }, [person, settings.language]);
 
-  if (!person || !details) {
-    return (
-      <SafeAreaView style={[styles.safeFallback, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.textPrimary, fontSize: 18, textAlign: 'center' }}>Celebration not found.</Text>
-      </SafeAreaView>
-    );
-  }
+  const accent = person ? accentFor(person.type, colors, getCustomType) : colors.primaryAccent;
+
+  const completedCount = person?.checklist
+    ? person.checklist.items.filter((i) => i.completed).length
+    : 0;
+  const totalCount = person?.checklist?.items.length || 0;
 
   const handleDelete = () => {
+    if (!person) return;
     Alert.alert(t('deleteCelebration'), t('deletePerson', person.name), [
       { text: t('cancel'), style: 'cancel' },
       {
@@ -68,20 +71,23 @@ export default function PersonDetailScreen() {
   };
 
   const handleReminderToggle = (value: boolean) => {
+    if (!person) return;
     updatePerson(person.id, { ...person, reminderEnabled: value });
   };
 
-  const [showChecklistModal, setShowChecklistModal] = useState(false);
-  const accent = accentFor(person.type, colors, getCustomType);
-
   const handleSaveChecklist = (checklist: Checklist) => {
+    if (!person) return;
     updatePerson(person.id, { checklist });
   };
 
-  const completedCount = person.checklist
-    ? person.checklist.items.filter((i) => i.completed).length
-    : 0;
-  const totalCount = person.checklist?.items.length || 0;
+  // Early return after all hooks
+  if (!person || !details) {
+    return (
+      <SafeAreaView style={[styles.safeFallback, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.textPrimary, fontSize: 18, textAlign: 'center' }}>Celebration not found.</Text>
+      </SafeAreaView>
+    );
+  }
 
 
   return (

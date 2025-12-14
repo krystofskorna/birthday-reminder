@@ -1,10 +1,11 @@
-import { memo, useState } from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View, Dimensions } from 'react-native';
+import { memo, useState, useEffect } from 'react';
+import { Modal, StyleSheet, Text, TouchableOpacity, View, Dimensions, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSettings } from '@/contexts/SettingsContext';
+import * as Localization from 'expo-localization';
 
 const { width } = Dimensions.get('window');
 
@@ -71,13 +72,72 @@ export const OnboardingTutorial = memo(function OnboardingTutorial({ visible, on
   const [currentStep, setCurrentStep] = useState(0);
   const isLastStep = currentStep === steps.length - 1;
   const step = steps[currentStep];
-  const lang = settings.language;
+  
+  // Auto-detect language from device locale or use settings
+  const deviceLocale = Localization.locale || Localization.locales[0]?.languageCode || 'en';
+  const isDeviceCzech = deviceLocale.startsWith('cs');
+  const lang = settings.language || (isDeviceCzech ? 'cs' : 'en');
+  
+  // Animations
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [scaleAnim] = useState(new Animated.Value(0.8));
+  const [slideAnim] = useState(new Animated.Value(50));
+
+  useEffect(() => {
+    if (visible) {
+      // Reset animations
+      fadeAnim.setValue(0);
+      scaleAnim.setValue(0.8);
+      slideAnim.setValue(50);
+      
+      // Animate in
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible, currentStep]);
 
   const handleNext = () => {
     if (isLastStep) {
-      onComplete();
+      // Fade out before completing
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        onComplete();
+      });
     } else {
-      setCurrentStep(currentStep + 1);
+      // Animate out current step
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: -30,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setCurrentStep(currentStep + 1);
+      });
     }
   };
 
@@ -102,21 +162,54 @@ export const OnboardingTutorial = memo(function OnboardingTutorial({ visible, on
           )}
 
           {/* Content */}
-          <View style={styles.content}>
+          <Animated.View 
+            style={[
+              styles.content,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { scale: scaleAnim },
+                  { translateY: slideAnim },
+                ],
+              },
+            ]}
+          >
             {/* Icon */}
-            <View style={styles.iconContainer}>
+            <Animated.View 
+              style={[
+                styles.iconContainer,
+                {
+                  transform: [{ scale: scaleAnim }],
+                },
+              ]}
+            >
               <Feather name={step.icon} size={72} color="#FFFFFF" />
-            </View>
+            </Animated.View>
 
             {/* Title */}
-            <Text style={styles.title}>
+            <Animated.Text 
+              style={[
+                styles.title,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ translateY: slideAnim }],
+                },
+              ]}
+            >
               {lang === 'cs' ? step.titleCs : step.titleEn}
-            </Text>
+            </Animated.Text>
 
             {/* Description */}
-            <Text style={styles.description}>
+            <Animated.Text 
+              style={[
+                styles.description,
+                {
+                  opacity: fadeAnim,
+                },
+              ]}
+            >
               {lang === 'cs' ? step.descriptionCs : step.descriptionEn}
-            </Text>
+            </Animated.Text>
 
             {/* Progress Dots */}
             <View style={styles.dotsContainer}>
@@ -132,23 +225,25 @@ export const OnboardingTutorial = memo(function OnboardingTutorial({ visible, on
             </View>
 
             {/* Next Button */}
-            <TouchableOpacity style={styles.nextButton} onPress={handleNext} activeOpacity={0.9}>
-              <Text style={styles.nextButtonText}>
-                {isLastStep
-                  ? lang === 'cs'
-                    ? 'Začít'
-                    : 'Get Started'
-                  : lang === 'cs'
-                  ? 'Další'
-                  : 'Next'}
-              </Text>
-              <Feather
-                name={isLastStep ? 'check' : 'arrow-right'}
-                size={20}
-                color="#FFFFFF"
-              />
-            </TouchableOpacity>
-          </View>
+            <Animated.View style={{ opacity: fadeAnim }}>
+              <TouchableOpacity style={styles.nextButton} onPress={handleNext} activeOpacity={0.9}>
+                <Text style={styles.nextButtonText}>
+                  {isLastStep
+                    ? lang === 'cs'
+                      ? 'Začít'
+                      : 'Get Started'
+                    : lang === 'cs'
+                    ? 'Další'
+                    : 'Next'}
+                </Text>
+                <Feather
+                  name={isLastStep ? 'check' : 'arrow-right'}
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+            </Animated.View>
+          </Animated.View>
         </LinearGradient>
       </SafeAreaView>
     </Modal>
